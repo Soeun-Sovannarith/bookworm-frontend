@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, Plus, Edit } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Trash2, Plus, Edit, Eye } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function Admin() {
@@ -17,6 +19,10 @@ export default function Admin() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
+  const [deleteBookId, setDeleteBookId] = useState<number | null>(null);
+  const [viewBook, setViewBook] = useState<Book | null>(null);
 
   const [bookForm, setBookForm] = useState({
     title: "",
@@ -73,9 +79,10 @@ export default function Admin() {
     try {
       await booksAPI.delete(id);
       setBooks(books.filter((b) => b.bookID !== id));
+      setDeleteBookId(null);
       toast({
         title: "Book deleted",
-        description: "Book has been removed",
+        description: "Book has been removed successfully",
       });
     } catch (error) {
       toast({
@@ -86,30 +93,65 @@ export default function Admin() {
     }
   };
 
-  const handleCreateBook = async (e: React.FormEvent) => {
+  const handleOpenEditDialog = (book: Book) => {
+    setIsEditMode(true);
+    setSelectedBookId(book.bookID);
+    setBookForm({
+      title: book.title,
+      author: book.author,
+      published_date: book.published_date,
+      stock: book.stock,
+      category: book.category,
+      price: book.price,
+      description: book.description,
+      imageURL: book.imageURL,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenCreateDialog = () => {
+    setIsEditMode(false);
+    setSelectedBookId(null);
+    setBookForm({
+      title: "",
+      author: "",
+      published_date: "",
+      stock: 0,
+      category: "",
+      price: 0,
+      description: "",
+      imageURL: "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmitBook = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const newBook = await booksAPI.create(bookForm);
-      setBooks([...books, newBook]);
+      if (isEditMode && selectedBookId) {
+        // Update existing book
+        const updatedBook = await booksAPI.update(selectedBookId, bookForm);
+        setBooks(books.map((b) => (b.bookID === selectedBookId ? updatedBook : b)));
+        toast({
+          title: "Book updated",
+          description: "Book has been updated successfully",
+        });
+      } else {
+        // Create new book
+        const newBook = await booksAPI.create(bookForm);
+        setBooks([...books, newBook]);
+        toast({
+          title: "Book created",
+          description: "New book has been added successfully",
+        });
+      }
       setIsDialogOpen(false);
-      setBookForm({
-        title: "",
-        author: "",
-        published_date: "",
-        stock: 0,
-        category: "",
-        price: 0,
-        description: "",
-        imageURL: "",
-      });
-      toast({
-        title: "Book created",
-        description: "New book has been added",
-      });
+      setIsEditMode(false);
+      setSelectedBookId(null);
     } catch (error) {
       toast({
-        title: "Error creating book",
-        description: error instanceof Error ? error.message : "Could not create book",
+        title: `Error ${isEditMode ? "updating" : "creating"} book`,
+        description: error instanceof Error ? error.message : `Could not ${isEditMode ? "update" : "create"} book`,
         variant: "destructive",
       });
     }
@@ -186,35 +228,37 @@ export default function Admin() {
                   <CardTitle>Book Management</CardTitle>
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button onClick={handleOpenCreateDialog}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add Book
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
-                        <DialogTitle>Add New Book</DialogTitle>
+                        <DialogTitle>{isEditMode ? "Edit Book" : "Add New Book"}</DialogTitle>
                       </DialogHeader>
-                      <form onSubmit={handleCreateBook} className="space-y-4">
+                      <form onSubmit={handleSubmitBook} className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            <Label>Title</Label>
+                            <Label>Title *</Label>
                             <Input
                               value={bookForm.title}
                               onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })}
                               required
+                              placeholder="Enter book title"
                             />
                           </div>
                           <div>
-                            <Label>Author</Label>
+                            <Label>Author *</Label>
                             <Input
                               value={bookForm.author}
                               onChange={(e) => setBookForm({ ...bookForm, author: e.target.value })}
                               required
+                              placeholder="Enter author name"
                             />
                           </div>
                           <div>
-                            <Label>Published Date</Label>
+                            <Label>Published Date *</Label>
                             <Input
                               type="date"
                               value={bookForm.published_date}
@@ -223,50 +267,64 @@ export default function Admin() {
                             />
                           </div>
                           <div>
-                            <Label>Category</Label>
+                            <Label>Category *</Label>
                             <Input
                               value={bookForm.category}
                               onChange={(e) => setBookForm({ ...bookForm, category: e.target.value })}
                               required
+                              placeholder="e.g., Fiction, Self-Help"
                             />
                           </div>
                           <div>
-                            <Label>Price</Label>
+                            <Label>Price ($) *</Label>
                             <Input
                               type="number"
                               step="0.01"
+                              min="0"
                               value={bookForm.price}
-                              onChange={(e) => setBookForm({ ...bookForm, price: parseFloat(e.target.value) })}
+                              onChange={(e) => setBookForm({ ...bookForm, price: parseFloat(e.target.value) || 0 })}
                               required
+                              placeholder="0.00"
                             />
                           </div>
                           <div>
-                            <Label>Stock</Label>
+                            <Label>Stock *</Label>
                             <Input
                               type="number"
+                              min="0"
                               value={bookForm.stock}
-                              onChange={(e) => setBookForm({ ...bookForm, stock: parseInt(e.target.value) })}
+                              onChange={(e) => setBookForm({ ...bookForm, stock: parseInt(e.target.value) || 0 })}
                               required
+                              placeholder="0"
                             />
                           </div>
                         </div>
                         <div>
-                          <Label>Image URL</Label>
+                          <Label>Image URL (optional)</Label>
                           <Input
                             value={bookForm.imageURL}
                             onChange={(e) => setBookForm({ ...bookForm, imageURL: e.target.value })}
-                            required
+                            placeholder="Leave empty to fetch from Open Library"
                           />
                         </div>
                         <div>
-                          <Label>Description</Label>
-                          <Input
+                          <Label>Description *</Label>
+                          <Textarea
                             value={bookForm.description}
                             onChange={(e) => setBookForm({ ...bookForm, description: e.target.value })}
                             required
+                            placeholder="Enter book description"
+                            rows={4}
                           />
                         </div>
-                        <Button type="submit" className="w-full">Create Book</Button>
+                        <div className="flex gap-2 pt-4">
+                          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
+                            Cancel
+                          </Button>
+                          <Button type="submit" className="flex-1">
+                            {isEditMode ? "Update Book" : "Create Book"}
+                          </Button>
+                        </div>
                       </form>
                     </DialogContent>
                   </Dialog>
@@ -295,13 +353,32 @@ export default function Admin() {
                         <TableCell>${book.price.toFixed(2)}</TableCell>
                         <TableCell>{book.stock}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteBook(book.bookID)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setViewBook(book)}
+                              title="View details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEditDialog(book)}
+                              title="Edit book"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteBookId(book.bookID)}
+                              title="Delete book"
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -312,6 +389,90 @@ export default function Admin() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* View Book Dialog */}
+      <Dialog open={!!viewBook} onOpenChange={() => setViewBook(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Book Details</DialogTitle>
+          </DialogHeader>
+          {viewBook && (
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-muted-foreground">Title</Label>
+                    <p className="font-semibold">{viewBook.title}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Author</Label>
+                    <p>{viewBook.author}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Category</Label>
+                    <p>{viewBook.category}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Published Date</Label>
+                    <p>{viewBook.published_date}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-muted-foreground">Price</Label>
+                    <p className="font-semibold text-lg">${viewBook.price.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Stock</Label>
+                    <p>{viewBook.stock} available</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Book ID</Label>
+                    <p>{viewBook.bookID}</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Description</Label>
+                <p className="mt-1 text-sm">{viewBook.description}</p>
+              </div>
+              {viewBook.imageURL && (
+                <div>
+                  <Label className="text-muted-foreground">Cover Image</Label>
+                  <div className="mt-2 w-48 h-72 bg-muted rounded overflow-hidden">
+                    <img
+                      src={viewBook.imageURL}
+                      alt={viewBook.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteBookId} onOpenChange={() => setDeleteBookId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Book?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this book? This action cannot be undone and will remove the book from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteBookId && handleDeleteBook(deleteBookId)} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

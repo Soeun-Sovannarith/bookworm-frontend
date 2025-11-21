@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { User, LoginRequest, RegisterRequest } from "@/types";
-import { authAPI } from "@/lib/api";
+import { authAPI, usersAPI } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
@@ -35,9 +35,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authAPI.login(data);
       setToken(response.token);
-      setUser(response.user);
+      
+      // Store token first so the API call can use it
       localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
+      
+      // Fetch complete user profile to get all fields including createdAt
+      try {
+        const fullUserProfile = await usersAPI.getById(response.user.id);
+        setUser(fullUserProfile);
+        localStorage.setItem("user", JSON.stringify(fullUserProfile));
+      } catch (profileError) {
+        // Fallback to user from login response if profile fetch fails
+        console.warn("Could not fetch full profile, using login response data", profileError);
+        setUser(response.user);
+        localStorage.setItem("user", JSON.stringify(response.user));
+      }
+      
       toast({
         title: "Welcome back!",
         description: `Logged in as ${response.user.name}`,

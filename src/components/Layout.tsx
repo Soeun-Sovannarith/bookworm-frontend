@@ -65,10 +65,12 @@ export function Layout({ children }: LayoutProps) {
                   )}
 
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon">
-                      <User className="w-5 h-5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={handleLogout}>
+                    <Link to="/profile">
+                      <Button variant="ghost" size="icon" title="My Profile">
+                        <User className="w-5 h-5" />
+                      </Button>
+                    </Link>
+                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
                       <LogOut className="w-5 h-5" />
                     </Button>
                   </div>

@@ -28,47 +28,20 @@ async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-  
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    console.error(`API Error [${endpoint}]:`, {
-      status: response.status,
-      statusText: response.statusText,
-      error,
-      headers,
-    });
-    throw new Error(error.error || error.message || `Request failed: ${response.status}`);
+    throw new Error(error.error || `Request failed: ${response.status}`);
   }
 
-  // Handle empty responses (like DELETE operations)
-  const contentType = response.headers.get("content-type");
-  const contentLength = response.headers.get("content-length");
-  
-  if (contentLength === "0" || !contentType?.includes("application/json")) {
-    return undefined as T;
-  }
-
-  // Check if response has content
-  const text = await response.text();
-  if (!text || text.trim() === "") {
-    return undefined as T;
-  }
-
-  try {
-    return JSON.parse(text) as T;
-  } catch (e) {
-    console.warn("Failed to parse JSON response:", text);
-    return undefined as T;
-  }
+  return response.json();
 }
 
 // Auth API
@@ -239,25 +212,17 @@ export const openLibraryAPI = {
                             (book.imageURL.startsWith("http://") || book.imageURL.startsWith("https://")) &&
                             !book.imageURL.includes("book.jpg");
           
-          console.log(`📖 Processing book: "${book.title}" - Current imageURL: "${book.imageURL}" - Valid: ${isValidURL}`);
-          
           // Skip if book already has a valid image URL
           if (isValidURL) {
-            console.log(`⏭️ Skipping "${book.title}" - already has valid cover`);
             return book;
           }
 
           // Search for cover using title and author
-          console.log(`🔄 Fetching cover for "${book.title}"...`);
           const coverUrl = await openLibraryAPI.searchBookCover(book.title, book.author);
-          
-          const finalImageURL = coverUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
-          
-          console.log(`${coverUrl ? '✅' : '❌'} Final imageURL for "${book.title}": ${finalImageURL.substring(0, 100)}...`);
           
           return {
             ...book,
-            imageURL: finalImageURL,
+            imageURL: coverUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E",
           };
         })
       );

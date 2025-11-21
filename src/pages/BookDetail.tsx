@@ -111,7 +111,7 @@ export default function BookDetail() {
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Book Image */}
-          <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden">
+          <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden max-w-sm mx-auto md:mx-0">
             <img
               src={book.imageURL}
               alt={book.title}
