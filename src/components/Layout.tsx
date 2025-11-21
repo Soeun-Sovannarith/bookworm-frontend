@@ -1,7 +1,9 @@
 import { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { BookOpen, ShoppingCart, User, LogOut, LayoutDashboard } from "lucide-react";
 
 interface LayoutProps {
@@ -10,6 +12,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
+  const { cartCount } = useCart();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -35,8 +38,16 @@ export function Layout({ children }: LayoutProps) {
               {user ? (
                 <>
                   <Link to="/cart">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" className="relative">
                       <ShoppingCart className="w-5 h-5" />
+                      {cartCount > 0 && (
+                        <Badge 
+                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                          variant="destructive"
+                        >
+                          {cartCount > 99 ? '99+' : cartCount}
+                        </Badge>
+                      )}
                     </Button>
                   </Link>
 

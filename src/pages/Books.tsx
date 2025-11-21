@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
-import { booksAPI } from "@/lib/api";
+import { booksAPI, openLibraryAPI } from "@/lib/api";
 import type { Book } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,8 +27,10 @@ export default function Books() {
   const loadBooks = async () => {
     try {
       const data = await booksAPI.getAll();
-      setBooks(data);
-      setFilteredBooks(data);
+      // Enrich books with Open Library covers
+      const enrichedData = await openLibraryAPI.enrichBooksWithCovers(data);
+      setBooks(enrichedData);
+      setFilteredBooks(enrichedData);
     } catch (error) {
       toast({
         title: "Error loading books",
@@ -122,7 +124,7 @@ export default function Books() {
                       alt={book.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.src = "/placeholder.svg";
+                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
                       }}
                     />
                   </div>

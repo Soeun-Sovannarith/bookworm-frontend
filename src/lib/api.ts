@@ -28,20 +28,47 @@ async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const headers = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+  
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || `Request failed: ${response.status}`);
+    console.error(`API Error [${endpoint}]:`, {
+      status: response.status,
+      statusText: response.statusText,
+      error,
+      headers,
+    });
+    throw new Error(error.error || error.message || `Request failed: ${response.status}`);
   }
 
-  return response.json();
+  // Handle empty responses (like DELETE operations)
+  const contentType = response.headers.get("content-type");
+  const contentLength = response.headers.get("content-length");
+  
+  if (contentLength === "0" || !contentType?.includes("application/json")) {
+    return undefined as T;
+  }
+
+  // Check if response has content
+  const text = await response.text();
+  if (!text || text.trim() === "") {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (e) {
+    console.warn("Failed to parse JSON response:", text);
+    return undefined as T;
+  }
 }
 
 // Auth API
@@ -90,6 +117,170 @@ export const usersAPI = {
       method: "DELETE",
       headers: getAuthHeader(),
     }),
+};
+
+// Open Library API for book covers
+// Following Open Library guidelines: https://openlibrary.org/dev/docs/api/covers
+export const openLibraryAPI = {
+  /**
+   * Get Open Library cover URL by ISBN
+   * @param isbn - Book ISBN (10 or 13 digits)
+   * @param size - Cover size: S (small), M (medium), or L (large)
+   * @returns Direct URL to the book cover image
+   */
+  getCoverByISBN: (isbn: string, size: 'S' | 'M' | 'L' = 'L'): string => {
+    return `https://covers.openlibrary.org/b/isbn/${isbn}-${size}.jpg`;
+  },
+
+  /**
+   * Get Open Library cover URL by OLID (Open Library ID)
+   * @param olid - Open Library ID (e.g., OL7353617M)
+   * @param size - Cover size: S (small), M (medium), or L (large)
+   * @returns Direct URL to the book cover image
+   */
+  getCoverByOLID: (olid: string, size: 'S' | 'M' | 'L' = 'L'): string => {
+    return `https://covers.openlibrary.org/b/olid/${olid}-${size}.jpg`;
+  },
+
+  /**
+   * Search for a book and get its cover URL using Open Library Search API
+   * Note: This is used sparingly and only when necessary, following Open Library guidelines
+   * @param title - Book title to search for
+   * @param author - Optional author name for better matching
+   * @returns URL to the book cover image or null if not found
+   */
+  searchBookCover: async (title: string, author?: string): Promise<string | null> => {
+    try {
+      // Clean up and normalize search terms
+      const cleanTitle = title.trim();
+      const cleanAuthor = author?.trim();
+      
+      // Try multiple search strategies
+      const searchStrategies = [
+        // Strategy 1: Exact title and author
+        cleanAuthor ? `title=${encodeURIComponent(cleanTitle)}&author=${encodeURIComponent(cleanAuthor)}` : `title=${encodeURIComponent(cleanTitle)}`,
+        // Strategy 2: Just title (broader search)
+        `q=${encodeURIComponent(cleanTitle)}`,
+      ];
+      
+      for (const [index, searchQuery] of searchStrategies.entries()) {
+        const searchUrl = `https://openlibrary.org/search.json?${searchQuery}&limit=5`;
+        console.log(`🔍 Search Strategy ${index + 1} for: "${cleanTitle}" - ${searchUrl}`);
+        
+        const searchResponse = await fetch(searchUrl);
+        
+        if (!searchResponse.ok) {
+          console.warn(`⚠️ Open Library API returned status: ${searchResponse.status}`);
+          continue;
+        }
+        
+        const searchData = await searchResponse.json();
+        console.log(`📚 Found ${searchData.numFound || 0} results for "${cleanTitle}"`);
+
+        if (searchData.docs && searchData.docs.length > 0) {
+          // Try to find the best match
+          for (const book of searchData.docs) {
+            console.log(`  📖 Checking: "${book.title}" by ${book.author_name?.join(', ') || 'unknown'}`);
+            
+            // Priority 1: Use ISBN (most reliable)
+            if (book.isbn && book.isbn.length > 0) {
+              const isbn = book.isbn[0];
+              const coverUrl = openLibraryAPI.getCoverByISBN(isbn, 'L');
+              console.log(`✅ Found cover via ISBN: ${coverUrl}`);
+              return coverUrl;
+            }
+            
+            // Priority 2: Use OLID (Open Library ID)
+            if (book.cover_edition_key) {
+              const coverUrl = openLibraryAPI.getCoverByOLID(book.cover_edition_key, 'L');
+              console.log(`✅ Found cover via OLID: ${coverUrl}`);
+              return coverUrl;
+            }
+            
+            // Priority 3: Use Cover ID (internal ID)
+            if (book.cover_i) {
+              const coverUrl = `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`;
+              console.log(`✅ Found cover via Cover ID: ${coverUrl}`);
+              return coverUrl;
+            }
+          }
+        }
+      }
+      
+      console.warn(`⚠️ No cover found for "${cleanTitle}" after trying all strategies`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error searching cover for "${title}":`, error);
+      return null;
+    }
+  },
+
+  /**
+   * Enrich books array with Open Library cover images
+   * Uses search API sparingly, following Open Library best practices
+   * @param books - Array of books to enrich
+   * @returns Books with updated imageURL from Open Library
+   */
+  enrichBooksWithCovers: async (books: Book[]): Promise<Book[]> => {
+    // Process books in smaller batches to avoid overwhelming the API
+    const batchSize = 5;
+    const enrichedBooks: Book[] = [];
+    
+    for (let i = 0; i < books.length; i += batchSize) {
+      const batch = books.slice(i, i + batchSize);
+      
+      const batchResults = await Promise.all(
+        batch.map(async (book) => {
+          // Check if book has a valid image URL (not empty, not placeholder, not invalid like "book.jpg")
+          const isValidURL = book.imageURL && 
+                            book.imageURL !== "" && 
+                            !book.imageURL.includes("placeholder") && 
+                            !book.imageURL.includes("data:image") &&
+                            (book.imageURL.startsWith("http://") || book.imageURL.startsWith("https://")) &&
+                            !book.imageURL.includes("book.jpg");
+          
+          console.log(`📖 Processing book: "${book.title}" - Current imageURL: "${book.imageURL}" - Valid: ${isValidURL}`);
+          
+          // Skip if book already has a valid image URL
+          if (isValidURL) {
+            console.log(`⏭️ Skipping "${book.title}" - already has valid cover`);
+            return book;
+          }
+
+          // Search for cover using title and author
+          console.log(`🔄 Fetching cover for "${book.title}"...`);
+          const coverUrl = await openLibraryAPI.searchBookCover(book.title, book.author);
+          
+          const finalImageURL = coverUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
+          
+          console.log(`${coverUrl ? '✅' : '❌'} Final imageURL for "${book.title}": ${finalImageURL.substring(0, 100)}...`);
+          
+          return {
+            ...book,
+            imageURL: finalImageURL,
+          };
+        })
+      );
+      
+      enrichedBooks.push(...batchResults);
+      
+      // Add a small delay between batches to be respectful to the API
+      if (i + batchSize < books.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    return enrichedBooks;
+  },
+
+  /**
+   * Get Open Library book page URL
+   * @param isbn - Book ISBN for creating a courtesy link
+   * @returns URL to the book's page on Open Library
+   */
+  getBookPageURL: (isbn: string): string => {
+    return `https://openlibrary.org/isbn/${isbn}`;
+  },
 };
 
 // Books API

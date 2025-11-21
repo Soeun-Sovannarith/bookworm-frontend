@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
-import { booksAPI, cartAPI } from "@/lib/api";
+import { useCart } from "@/contexts/CartContext";
+import { booksAPI, cartAPI, openLibraryAPI } from "@/lib/api";
 import type { Book } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
@@ -12,6 +13,7 @@ export default function BookDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { incrementCartCount } = useCart();
   const [book, setBook] = useState<Book | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -25,7 +27,9 @@ export default function BookDetail() {
   const loadBook = async (bookId: number) => {
     try {
       const data = await booksAPI.getById(bookId);
-      setBook(data);
+      // Enrich with Open Library cover
+      const enrichedBooks = await openLibraryAPI.enrichBooksWithCovers([data]);
+      setBook(enrichedBooks[0]);
     } catch (error) {
       toast({
         title: "Error loading book",
@@ -52,6 +56,9 @@ export default function BookDetail() {
         bookId: book.bookID,
         quantity: 1,
       });
+
+      // Increment cart count badge
+      incrementCartCount();
 
       toast({
         title: "Added to cart",
@@ -110,7 +117,7 @@ export default function BookDetail() {
               alt={book.title}
               className="w-full h-full object-cover"
               onError={(e) => {
-                e.currentTarget.src = "/placeholder.svg";
+                e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
               }}
             />
           </div>
