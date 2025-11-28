@@ -24,7 +24,7 @@ export interface Order {
   userId: number;
   totalAmount: number;
   status: "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
-  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER";
+  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "BAKONG";
   paymentStatus: "PENDING" | "COMPLETED" | "FAILED";
   shippingAddress: string;
   createdAt: string;
@@ -42,9 +42,22 @@ export interface Payment {
   id: number;
   orderId: number;
   amount: number;
-  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER";
+  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "BAKONG";
   paymentStatus: "PENDING" | "COMPLETED" | "FAILED";
   createdAt: string;
+}
+
+export interface BakongPaymentRequest {
+  orderId: number;
+  currency: "USD" | "KHR";
+}
+
+export interface BakongPaymentResponse {
+  qrCode: string;
+  md5: string;
+  billNumber: string;
+  amount: number;
+  currency: string;
 }
 
 export interface AuthResponse {

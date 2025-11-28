@@ -6,7 +6,9 @@ import type {
   Payment, 
   AuthResponse, 
   LoginRequest, 
-  RegisterRequest 
+  RegisterRequest,
+  BakongPaymentRequest,
+  BakongPaymentResponse
 } from "@/types";
 
 const API_BASE_URL = "http://localhost:8080";
@@ -28,20 +30,47 @@ async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const headers = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+  
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || `Request failed: ${response.status}`);
+    console.error(`API Error [${endpoint}]:`, {
+      status: response.status,
+      statusText: response.statusText,
+      error,
+      headers,
+    });
+    throw new Error(error.error || error.message || `Request failed: ${response.status}`);
   }
 
-  return response.json();
+  // Handle empty responses (like DELETE operations)
+  const contentType = response.headers.get("content-type");
+  const contentLength = response.headers.get("content-length");
+  
+  if (contentLength === "0" || !contentType?.includes("application/json")) {
+    return undefined as T;
+  }
+
+  // Check if response has content
+  const text = await response.text();
+  if (!text || text.trim() === "") {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (e) {
+    console.warn("Failed to parse JSON response:", text);
+    return undefined as T;
+  }
 }
 
 // Auth API
@@ -399,6 +428,22 @@ export const paymentsAPI = {
   delete: (id: number) =>
     fetchAPI<void>(`/api/payments/${id}`, {
       method: "DELETE",
+      headers: getAuthHeader(),
+    }),
+};
+
+// Bakong Payment API
+export const bakongAPI = {
+  generateQR: (orderId: number, currency: "USD" | "KHR" = "USD") =>
+    fetchAPI<BakongPaymentResponse>("/api/payments/bakong/generate-qr", {
+      method: "POST",
+      headers: getAuthHeader(),
+      body: JSON.stringify({ orderId, currency }),
+    }),
+
+  verifyPayment: (md5: string, orderId: number) =>
+    fetchAPI<{ status: string; message: string }>(`/api/payments/bakong/verify-payment?md5=${md5}&orderId=${orderId}`, {
+      method: "POST",
       headers: getAuthHeader(),
     }),
 };

@@ -41,16 +41,27 @@ export default function Admin() {
 
   const loadData = async () => {
     try {
-      const [usersData, booksData] = await Promise.all([
-        usersAPI.getAll(),
-        booksAPI.getAll(),
-      ]);
-      setUsers(usersData);
+      // Try to load users, but continue if it fails (403 forbidden)
+      let usersData: User[] = [];
+      try {
+        usersData = await usersAPI.getAll();
+        setUsers(usersData);
+      } catch (userError) {
+        console.warn("Could not load users (might not have permission):", userError);
+        toast({
+          title: "Limited Access",
+          description: "User management is restricted. Showing book management only.",
+          variant: "default",
+        });
+      }
+
+      // Load books
+      const booksData = await booksAPI.getAll();
       setBooks(booksData);
     } catch (error) {
       toast({
         title: "Error loading data",
-        description: error instanceof Error ? error.message : "Could not fetch admin data",
+        description: error instanceof Error ? error.message : "Could not load admin data",
         variant: "destructive",
       });
     } finally {

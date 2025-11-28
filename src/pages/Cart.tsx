@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { cartAPI, booksAPI, ordersAPI, openLibraryAPI } from "@/lib/api";
-import type { CartItem, Book } from "@/types";
+import { cartAPI, booksAPI, ordersAPI, openLibraryAPI, bakongAPI } from "@/lib/api";
+import type { CartItem, Book, BakongPaymentResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -27,9 +27,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { QRCodeSVG } from "qrcode.react";
 
 interface CartItemWithBook extends CartItem {
   book?: Book;
@@ -44,8 +44,10 @@ export default function Cart() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showClearCartDialog, setShowClearCartDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER">("CREDIT_CARD");
   const [shippingAddress, setShippingAddress] = useState("");
+  const [bakongQR, setBakongQR] = useState<BakongPaymentResponse | null>(null);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -195,7 +197,7 @@ export default function Cart() {
     }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!shippingAddress.trim()) {
       toast({
         title: "Shipping address required",
@@ -204,49 +206,74 @@ export default function Cart() {
       });
       return;
     }
-    setShowPaymentModal(true);
-  };
 
-  const processCheckout = async () => {
     if (!user) return;
 
     try {
       setIsProcessing(true);
+      setShowPaymentModal(true);
 
-      console.log("Creating order...", {
-        userId: user.id,
-        totalAmount: calculateTotal(),
-        status: "PENDING",
-        paymentMethod,
-        paymentStatus: "COMPLETED",
-        shippingAddress,
-      });
-
-      // Create order
+      // Create order first
       const order = await ordersAPI.create({
         userId: user.id,
         totalAmount: calculateTotal(),
         status: "PENDING",
-        paymentMethod,
-        paymentStatus: "COMPLETED",
+        paymentMethod: "BAKONG",
+        paymentStatus: "PENDING",
         shippingAddress,
       });
 
-      console.log("Order created successfully:", order);
+      setCurrentOrderId(order.id);
 
-      // Clear the cart after successful checkout
-      console.log("Clearing cart items...");
-      const deletePromises = cartItems.map(item => {
-        console.log(`Deleting cart item ${item.id}`);
-        return cartAPI.delete(item.id);
+      // Generate Bakong QR code
+      setIsGeneratingQR(true);
+      try {
+        const qrResponse = await bakongAPI.generateQR(order.id, "USD");
+        setBakongQR(qrResponse);
+        toast({
+          title: "Order Created",
+          description: `Order #${order.id} created. Please scan the QR code to complete payment.`,
+        });
+      } catch (qrError) {
+        // If Bakong endpoint returns 403 or is not implemented yet
+        console.error("Bakong QR generation failed:", qrError);
+        toast({
+          title: "Backend Not Ready",
+          description: "Bakong payment endpoint not implemented yet. Please check bakong.md for backend implementation guide.",
+          variant: "destructive",
+        });
+        setShowPaymentModal(false);
+        setCurrentOrderId(null);
+      } finally {
+        setIsGeneratingQR(false);
+      }
+    } catch (error) {
+      setShowPaymentModal(false);
+      toast({
+        title: "Error creating order",
+        description: error instanceof Error ? error.message : "Could not create order",
+        variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const processCheckout = async () => {
+    if (!user || !currentOrderId) return;
+
+    try {
+      setIsProcessing(true);
+
+      // Clear the cart after payment confirmation
+      const deletePromises = cartItems.map(item => cartAPI.delete(item.id));
       await Promise.all(deletePromises);
-      
-      console.log("Cart cleared successfully");
 
       // Update UI state
       setCartItems([]);
       setShowPaymentModal(false);
+      setBakongQR(null);
+      setCurrentOrderId(null);
       setShippingAddress("");
 
       // Clear cart count badge
@@ -254,19 +281,18 @@ export default function Cart() {
 
       // Show success message
       toast({
-        title: "Payment Successful!",
-        description: `Your order #${order.id} has been placed successfully. Cart has been cleared.`,
+        title: "Payment Confirmed!",
+        description: `Your order #${currentOrderId} has been confirmed. Cart has been cleared.`,
       });
 
-      // Redirect to orders page after a short delay
+      // Redirect to orders page
       setTimeout(() => {
         navigate("/orders");
       }, 1500);
     } catch (error) {
-      console.error("Checkout error:", error);
       toast({
-        title: "Checkout failed",
-        description: error instanceof Error ? error.message : "Could not complete checkout",
+        title: "Error clearing cart",
+        description: error instanceof Error ? error.message : "Could not clear cart",
         variant: "destructive",
       });
     } finally {
@@ -438,11 +464,11 @@ export default function Cart() {
 
       {/* Payment Modal */}
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Complete Payment</DialogTitle>
+            <DialogTitle>Bakong Payment</DialogTitle>
             <DialogDescription>
-              Select your payment method to complete the order
+              Scan the QR code with your Bakong app to complete payment
             </DialogDescription>
           </DialogHeader>
 
@@ -455,49 +481,72 @@ export default function Cart() {
               <div className="text-sm text-muted-foreground">
                 Shipping to: {shippingAddress}
               </div>
+              {currentOrderId && (
+                <div className="text-sm text-muted-foreground mt-1">
+                  Order ID: #{currentOrderId}
+                </div>
+              )}
             </div>
 
-            <div>
-              <Label className="mb-3 block">Payment Method</Label>
-              <RadioGroup value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
-                <div className="flex items-center space-x-2 border rounded-lg p-3">
-                  <RadioGroupItem value="CREDIT_CARD" id="credit" />
-                  <Label htmlFor="credit" className="flex-1 cursor-pointer">
-                    Credit Card
-                  </Label>
+            {isGeneratingQR && (
+              <div className="text-center py-8">
+                <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+                <p className="text-muted-foreground">Generating QR code...</p>
+              </div>
+            )}
+
+            {bakongQR && !isGeneratingQR && (
+              <div className="space-y-4">
+                {/* QR Code Display */}
+                <div className="flex justify-center bg-white p-6 rounded-lg">
+                  <QRCodeSVG
+                    value={bakongQR.qrCode}
+                    size={256}
+                    level="H"
+                    includeMargin={true}
+                  />
                 </div>
-                <div className="flex items-center space-x-2 border rounded-lg p-3">
-                  <RadioGroupItem value="DEBIT_CARD" id="debit" />
-                  <Label htmlFor="debit" className="flex-1 cursor-pointer">
-                    Debit Card
-                  </Label>
+
+                {/* Payment Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                  <h4 className="font-semibold text-blue-900">Payment Instructions:</h4>
+                  <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                    <li>Open your Bakong app</li>
+                    <li>Tap "Scan QR" or "Pay"</li>
+                    <li>Scan this QR code</li>
+                    <li>Confirm the amount: ${bakongQR.amount.toFixed(2)}</li>
+                    <li>Complete the payment</li>
+                  </ol>
                 </div>
-                <div className="flex items-center space-x-2 border rounded-lg p-3">
-                  <RadioGroupItem value="PAYPAL" id="paypal" />
-                  <Label htmlFor="paypal" className="flex-1 cursor-pointer">
-                    PayPal
-                  </Label>
+
+                {/* Payment Details */}
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>Bill Number: {bakongQR.billNumber}</div>
+                  <div>Currency: {bakongQR.currency}</div>
                 </div>
-                <div className="flex items-center space-x-2 border rounded-lg p-3">
-                  <RadioGroupItem value="BANK_TRANSFER" id="bank" />
-                  <Label htmlFor="bank" className="flex-1 cursor-pointer">
-                    Bank Transfer
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+              </div>
+            )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-col gap-2">
+            <Button
+              className="w-full"
+              onClick={processCheckout}
+              disabled={isProcessing || isGeneratingQR || !bakongQR}
+            >
+              {isProcessing ? "Confirming..." : "I've Completed Payment"}
+            </Button>
             <Button
               variant="outline"
-              onClick={() => setShowPaymentModal(false)}
+              className="w-full"
+              onClick={() => {
+                setShowPaymentModal(false);
+                setBakongQR(null);
+                setCurrentOrderId(null);
+              }}
               disabled={isProcessing}
             >
               Cancel
-            </Button>
-            <Button onClick={processCheckout} disabled={isProcessing}>
-              {isProcessing ? "Processing..." : "Confirm Payment"}
             </Button>
           </DialogFooter>
         </DialogContent>
