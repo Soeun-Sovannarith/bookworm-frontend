@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { cartAPI, booksAPI, ordersAPI, openLibraryAPI, bakongAPI } from "@/lib/api";
-import type { CartItem, Book, BakongPaymentResponse } from "@/types";
+import { cartAPI, booksAPI, ordersAPI, openLibraryAPI, bakongAPI, stripeAPI } from "@/lib/api";
+import type { CartItem, Book, BakongPaymentResponse, StripePaymentResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -27,9 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { QRCodeSVG } from "qrcode.react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 interface CartItemWithBook extends CartItem {
   book?: Book;
@@ -48,12 +51,29 @@ export default function Cart() {
   const [bakongQR, setBakongQR] = useState<BakongPaymentResponse | null>(null);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"BAKONG" | "STRIPE">("STRIPE");
+  const [stripePromise, setStripePromise] = useState<any>(null);
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       loadCart();
     }
   }, [user]);
+
+  useEffect(() => {
+    // Load Stripe publishable key
+    const initStripe = async () => {
+      try {
+        const config = await stripeAPI.getConfig();
+        const stripe = await loadStripe(config.publishableKey);
+        setStripePromise(stripe);
+      } catch (error) {
+        console.error("Failed to load Stripe:", error);
+      }
+    };
+    initStripe();
+  }, []);
 
   const loadCart = async () => {
     if (!user) return;
@@ -62,23 +82,25 @@ export default function Cart() {
       const items = await cartAPI.getByUserId(user.id);
       
       // Fetch book details for each cart item
-      const itemsWithBooks = await Promise.all(
-        items.map(async (item) => {
+      const itemsWithBooks: CartItemWithBook[] = await Promise.all(
+        items.map(async (item): Promise<CartItemWithBook> => {
           try {
             const book = await booksAPI.getById(item.bookId);
             return { ...item, book };
           } catch {
-            return item;
+            return item as CartItemWithBook;
           }
         })
       );
 
       // Enrich books with Open Library covers
-      const books = itemsWithBooks.map(item => item.book).filter((book): book is Book => book !== undefined);
+      const books = itemsWithBooks
+        .map(item => item.book)
+        .filter((book): book is Book => book !== undefined);
       const enrichedBooks = await openLibraryAPI.enrichBooksWithCovers(books);
       
       // Map enriched books back to cart items
-      const enrichedCartItems = itemsWithBooks.map(item => {
+      const enrichedCartItems: CartItemWithBook[] = itemsWithBooks.map(item => {
         if (item.book) {
           const enrichedBook = enrichedBooks.find(b => b.bookID === item.book!.bookID);
           return { ...item, book: enrichedBook || item.book };
@@ -197,7 +219,7 @@ export default function Cart() {
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!shippingAddress.trim()) {
       toast({
         title: "Shipping address required",
@@ -206,46 +228,75 @@ export default function Cart() {
       });
       return;
     }
+    setShowPaymentModal(true);
+  };
 
+  const handlePaymentMethodSubmit = async () => {
     if (!user) return;
 
     try {
       setIsProcessing(true);
-      setShowPaymentModal(true);
 
       // Create order first
       const order = await ordersAPI.create({
         userId: user.id,
         totalAmount: calculateTotal(),
         status: "PENDING",
-        paymentMethod: "BAKONG",
+        paymentMethod,
         paymentStatus: "PENDING",
         shippingAddress,
       });
 
       setCurrentOrderId(order.id);
 
-      // Generate Bakong QR code
-      setIsGeneratingQR(true);
-      try {
-        const qrResponse = await bakongAPI.generateQR(order.id, "USD");
-        setBakongQR(qrResponse);
-        toast({
-          title: "Order Created",
-          description: `Order #${order.id} created. Please scan the QR code to complete payment.`,
-        });
-      } catch (qrError) {
-        // If Bakong endpoint returns 403 or is not implemented yet
-        console.error("Bakong QR generation failed:", qrError);
-        toast({
-          title: "Backend Not Ready",
-          description: "Bakong payment endpoint not implemented yet. Please check bakong.md for backend implementation guide.",
-          variant: "destructive",
-        });
-        setShowPaymentModal(false);
-        setCurrentOrderId(null);
-      } finally {
-        setIsGeneratingQR(false);
+      if (paymentMethod === "BAKONG") {
+        // Generate Bakong QR code
+        setIsGeneratingQR(true);
+        try {
+          const qrResponse = await bakongAPI.generateQR(order.id, "USD");
+          setBakongQR(qrResponse);
+          toast({
+            title: "Order Created",
+            description: `Order #${order.id} created. Please scan the QR code to complete payment.`,
+          });
+        } catch (qrError) {
+          console.error("Bakong QR generation failed:", qrError);
+          toast({
+            title: "Backend Not Ready",
+            description: "Bakong payment endpoint not implemented yet.",
+            variant: "destructive",
+          });
+          setShowPaymentModal(false);
+          setCurrentOrderId(null);
+        } finally {
+          setIsGeneratingQR(false);
+        }
+      } else if (paymentMethod === "STRIPE") {
+        // Create Stripe payment intent
+        setIsGeneratingQR(true);
+        try {
+          const stripeResponse = await stripeAPI.createPaymentIntent({
+            orderId: order.id,
+            currency: "usd",
+            receiptEmail: user.email,
+          });
+          setStripeClientSecret(stripeResponse.clientSecret);
+          toast({
+            title: "Order Created",
+            description: `Order #${order.id} created. Please complete payment.`,
+          });
+        } catch (stripeError) {
+          console.error("Stripe payment intent failed:", stripeError);
+          toast({
+            title: "Payment Error",
+            description: "Could not initialize Stripe payment.",
+            variant: "destructive",
+          });
+          setShowPaymentModal(false);
+          setCurrentOrderId(null);
+        } finally {
+          setIsGeneratingQR(false);
+        }
       }
     } catch (error) {
       setShowPaymentModal(false);
@@ -464,11 +515,11 @@ export default function Cart() {
 
       {/* Payment Modal */}
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Bakong Payment</DialogTitle>
+            <DialogTitle>Choose Payment Method</DialogTitle>
             <DialogDescription>
-              Scan the QR code with your Bakong app to complete payment
+              Select how you'd like to pay for your order
             </DialogDescription>
           </DialogHeader>
 
@@ -488,6 +539,26 @@ export default function Cart() {
               )}
             </div>
 
+            {!currentOrderId && (
+              <div>
+                <Label className="mb-3 block">Payment Method</Label>
+                <RadioGroup value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                  <div className="flex items-center space-x-2 border rounded-lg p-3">
+                    <RadioGroupItem value="STRIPE" id="stripe" />
+                    <Label htmlFor="stripe" className="flex-1 cursor-pointer">
+                      Credit/Debit Card (Stripe)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 border rounded-lg p-3">
+                    <RadioGroupItem value="BAKONG" id="bakong" />
+                    <Label htmlFor="bakong" className="flex-1 cursor-pointer">
+                      Bakong QR Payment
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
             {isGeneratingQR && (
               <div className="text-center py-8">
                 <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
@@ -498,19 +569,19 @@ export default function Cart() {
             {bakongQR && !isGeneratingQR && (
               <div className="space-y-4">
                 {/* QR Code Display */}
-                <div className="flex justify-center bg-white p-6 rounded-lg">
+                <div className="flex justify-center bg-white p-4 rounded-lg">
                   <QRCodeSVG
                     value={bakongQR.qrCode}
-                    size={256}
+                    size={220}
                     level="H"
                     includeMargin={true}
                   />
                 </div>
 
                 {/* Payment Instructions */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                  <h4 className="font-semibold text-blue-900">Payment Instructions:</h4>
-                  <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                  <h4 className="font-semibold text-blue-900 text-sm">Payment Instructions:</h4>
+                  <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
                     <li>Open your Bakong app</li>
                     <li>Tap "Scan QR" or "Pay"</li>
                     <li>Scan this QR code</li>
@@ -526,28 +597,67 @@ export default function Cart() {
                 </div>
               </div>
             )}
+
+            {stripeClientSecret && stripePromise && paymentMethod === "STRIPE" && (
+              <div className="space-y-4">
+                <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret }}>
+                  <StripePaymentForm 
+                    clientSecret={stripeClientSecret}
+                    orderId={currentOrderId!}
+                    onSuccess={() => processCheckout()}
+                    onCancel={() => {
+                      setShowPaymentModal(false);
+                      setStripeClientSecret(null);
+                      setCurrentOrderId(null);
+                    }}
+                  />
+                </Elements>
+              </div>
+            )}
           </div>
 
-          <DialogFooter className="flex-col sm:flex-col gap-2">
-            <Button
-              className="w-full"
-              onClick={processCheckout}
-              disabled={isProcessing || isGeneratingQR || !bakongQR}
-            >
-              {isProcessing ? "Confirming..." : "I've Completed Payment"}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setShowPaymentModal(false);
-                setBakongQR(null);
-                setCurrentOrderId(null);
-              }}
-              disabled={isProcessing}
-            >
-              Cancel
-            </Button>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+            {!currentOrderId ? (
+              <>
+                <Button
+                  className="w-full"
+                  onClick={handlePaymentMethodSubmit}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? "Creating Order..." : "Continue to Payment"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowPaymentModal(false)}
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : paymentMethod === "BAKONG" && bakongQR ? (
+              <>
+                <Button
+                  className="w-full"
+                  onClick={processCheckout}
+                  disabled={isProcessing || isGeneratingQR}
+                >
+                  {isProcessing ? "Confirming..." : "I've Completed Payment"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setBakongQR(null);
+                    setCurrentOrderId(null);
+                  }}
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -570,5 +680,113 @@ export default function Cart() {
         </AlertDialogContent>
       </AlertDialog>
     </Layout>
+  );
+}
+
+// Stripe Payment Form Component
+function StripePaymentForm({ clientSecret, orderId, onSuccess, onCancel }: {
+  clientSecret: string;
+  orderId: number;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    try {
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement)!,
+        },
+      });
+
+      if (error) {
+        setErrorMessage(error.message || "Payment failed");
+        toast({
+          title: "Payment Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (paymentIntent.status === "succeeded") {
+        // Confirm payment with backend
+        await stripeAPI.confirmPayment(paymentIntent.id, orderId);
+        
+        toast({
+          title: "Payment Successful!",
+          description: `Order #${orderId} has been paid successfully.`,
+        });
+        onSuccess();
+      }
+    } catch (error) {
+      setErrorMessage("An error occurred during payment");
+      toast({
+        title: "Payment Error",
+        description: error instanceof Error ? error.message : "Could not process payment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="border rounded-lg p-4 bg-white">
+        <Label className="mb-2 block">Card Details</Label>
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: "16px",
+                color: "#424770",
+                "::placeholder": {
+                  color: "#aab7c4",
+                },
+              },
+              invalid: {
+                color: "#9e2146",
+              },
+            },
+          }}
+        />
+      </div>
+
+      {errorMessage && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3">
+          {errorMessage}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={!stripe || isProcessing}
+        >
+          {isProcessing ? "Processing..." : "Pay Now"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={onCancel}
+          disabled={isProcessing}
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }

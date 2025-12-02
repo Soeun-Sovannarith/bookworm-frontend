@@ -23,8 +23,8 @@ export interface Order {
   id: number;
   userId: number;
   totalAmount: number;
-  status: "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
-  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "BAKONG";
+  status: "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "PAID";
+  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "BAKONG" | "STRIPE";
   paymentStatus: "PENDING" | "COMPLETED" | "FAILED";
   shippingAddress: string;
   createdAt: string;
@@ -42,7 +42,7 @@ export interface Payment {
   id: number;
   orderId: number;
   amount: number;
-  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "BAKONG";
+  paymentMethod: "CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "BAKONG" | "STRIPE";
   paymentStatus: "PENDING" | "COMPLETED" | "FAILED";
   createdAt: string;
 }
@@ -58,6 +58,26 @@ export interface BakongPaymentResponse {
   billNumber: string;
   amount: number;
   currency: string;
+}
+
+export interface StripePaymentRequest {
+  orderId: number;
+  currency: string;
+  receiptEmail?: string;
+  description?: string;
+}
+
+export interface StripePaymentResponse {
+  clientSecret: string;
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentId: number;
+}
+
+export interface StripeConfig {
+  publishableKey: string;
 }
 
 export interface AuthResponse {

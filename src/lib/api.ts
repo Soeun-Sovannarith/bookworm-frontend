@@ -8,7 +8,10 @@ import type {
   LoginRequest, 
   RegisterRequest,
   BakongPaymentRequest,
-  BakongPaymentResponse
+  BakongPaymentResponse,
+  StripePaymentRequest,
+  StripePaymentResponse,
+  StripeConfig
 } from "@/types";
 
 const API_BASE_URL = "http://localhost:8080";
@@ -443,6 +446,34 @@ export const bakongAPI = {
 
   verifyPayment: (md5: string, orderId: number) =>
     fetchAPI<{ status: string; message: string }>(`/api/payments/bakong/verify-payment?md5=${md5}&orderId=${orderId}`, {
+      method: "POST",
+      headers: getAuthHeader(),
+    }),
+};
+
+// Stripe Payment API
+export const stripeAPI = {
+  getConfig: () =>
+    fetchAPI<StripeConfig>("/api/payments/stripe/config", {
+      headers: getAuthHeader(),
+    }),
+
+  createPaymentIntent: (request: StripePaymentRequest) =>
+    fetchAPI<StripePaymentResponse>("/api/payments/stripe/create-payment-intent", {
+      method: "POST",
+      headers: getAuthHeader(),
+      body: JSON.stringify(request),
+    }),
+
+  confirmPayment: (paymentIntentId: string, orderId: number) =>
+    fetchAPI<{ status: string; paymentIntentId: string; orderId: number }>("/api/payments/stripe/confirm", {
+      method: "POST",
+      headers: getAuthHeader(),
+      body: JSON.stringify({ paymentIntentId, orderId }),
+    }),
+
+  cancelPayment: (paymentIntentId: string) =>
+    fetchAPI<{ status: string; paymentIntentId: string }>(`/api/payments/stripe/cancel/${paymentIntentId}`, {
       method: "POST",
       headers: getAuthHeader(),
     }),
