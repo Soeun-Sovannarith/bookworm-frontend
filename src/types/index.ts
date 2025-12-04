@@ -50,6 +50,7 @@ export interface Payment {
 export interface BakongPaymentRequest {
   orderId: number;
   currency: "USD" | "KHR";
+  expiresInMinutes?: number; // Optional: defaults to 30 minutes if not provided
 }
 
 export interface BakongPaymentResponse {

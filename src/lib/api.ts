@@ -437,11 +437,11 @@ export const paymentsAPI = {
 
 // Bakong Payment API
 export const bakongAPI = {
-  generateQR: (orderId: number, currency: "USD" | "KHR" = "USD") =>
+  generateQR: (orderId: number, currency: "USD" | "KHR" = "USD", expiresInMinutes: number = 30) =>
     fetchAPI<BakongPaymentResponse>("/api/payments/bakong/generate-qr", {
       method: "POST",
       headers: getAuthHeader(),
-      body: JSON.stringify({ orderId, currency }),
+      body: JSON.stringify({ orderId, currency, expiresInMinutes }),
     }),
 
   verifyPayment: (md5: string, orderId: number) =>
