@@ -2,8 +2,11 @@ import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Search, ShoppingBag, Star } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Home() {
+  const { t } = useTranslation();
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -11,21 +14,21 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl font-bold mb-6 text-foreground">
-              Welcome to BookHaven
+              {t("home.welcome")}
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              Discover your next great read from our curated collection of timeless classics and modern bestsellers
+              {t("home.description")}
             </p>
             <div className="flex gap-4 justify-center">
               <Link to="/books">
                 <Button size="lg" className="gap-2">
                   <Search className="w-5 h-5" />
-                  Browse Books
+                  {t("home.browse_books")}
                 </Button>
               </Link>
               <Link to="/auth">
                 <Button size="lg" variant="outline" className="gap-2">
-                  Sign In
+                  {t("home.sign_in")}
                 </Button>
               </Link>
             </div>
@@ -41,9 +44,11 @@ export default function Home() {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Vast Collection</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                {t("home.features.vast_collection")}
+              </h3>
               <p className="text-muted-foreground">
-                Thousands of books across all genres and categories
+                {t("home.features.vast_collection_desc")}
               </p>
             </div>
 
@@ -51,9 +56,11 @@ export default function Home() {
               <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ShoppingBag className="w-8 h-8 text-accent" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Easy Shopping</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                {t("home.features.easy_shopping")}
+              </h3>
               <p className="text-muted-foreground">
-                Simple cart and checkout process with secure payments
+                {t("home.features.easy_shopping_desc")}
               </p>
             </div>
 
@@ -61,9 +68,11 @@ export default function Home() {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Star className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Quality Guaranteed</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                {t("home.features.quality_guaranteed")}
+              </h3>
               <p className="text-muted-foreground">
-                Carefully selected books with detailed descriptions
+                {t("home.features.quality_guaranteed_desc")}
               </p>
             </div>
           </div>
@@ -73,12 +82,12 @@ export default function Home() {
       {/* CTA Section */}
       <section className="py-16 bg-muted">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Start Your Literary Journey Today</h2>
+          <h2 className="text-3xl font-bold mb-4">{t("home.cta_title")}</h2>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of readers who trust BookHaven for their reading needs
+            {t("home.cta_desc")}
           </p>
           <Link to="/books">
-            <Button size="lg">Explore Our Catalog</Button>
+            <Button size="lg">{t("home.cta_button")}</Button>
           </Link>
         </div>
       </section>

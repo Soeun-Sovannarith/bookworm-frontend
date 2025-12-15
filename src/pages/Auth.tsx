@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTranslation } from "react-i18next";
 
 export default function Auth() {
   const { user, login, register } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already logged in
@@ -48,9 +50,7 @@ export default function Auth() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (registerData.password !== registerData.confirmPassword) {
-      return;
-    }
+    if (registerData.password !== registerData.confirmPassword) return;
 
     setIsLoading(true);
     try {
@@ -60,7 +60,6 @@ export default function Auth() {
         password: registerData.password,
         role: "USER",
       });
-      // Switch to login tab after successful registration
       setLoginData({ email: registerData.email, password: registerData.password });
     } catch (error) {
       // Error handled by context
@@ -75,20 +74,20 @@ export default function Auth() {
         <div className="max-w-md mx-auto">
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="login">{t("auth.login")}</TabsTrigger>
+              <TabsTrigger value="register">{t("auth.register")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
               <Card>
                 <CardHeader>
-                  <CardTitle>Welcome Back</CardTitle>
-                  <CardDescription>Sign in to your BookHaven account</CardDescription>
+                  <CardTitle>{t("auth.welcome_back")}</CardTitle>
+                  <CardDescription>{t("auth.sign_in_description")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="login-email">Email</Label>
+                      <Label htmlFor="login-email">{t("auth.email")}</Label>
                       <Input
                         id="login-email"
                         type="email"
@@ -100,7 +99,7 @@ export default function Auth() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="login-password">Password</Label>
+                      <Label htmlFor="login-password">{t("auth.password")}</Label>
                       <Input
                         id="login-password"
                         type="password"
@@ -111,7 +110,7 @@ export default function Auth() {
                     </div>
 
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Signing in..." : "Sign In"}
+                      {isLoading ? t("auth.signing_in") : t("auth.sign_in")}
                     </Button>
                   </form>
                 </CardContent>
@@ -121,13 +120,13 @@ export default function Auth() {
             <TabsContent value="register">
               <Card>
                 <CardHeader>
-                  <CardTitle>Create Account</CardTitle>
-                  <CardDescription>Join BookHaven today</CardDescription>
+                  <CardTitle>{t("auth.create_account")}</CardTitle>
+                  <CardDescription>{t("auth.join_today")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleRegister} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="register-name">Full Name</Label>
+                      <Label htmlFor="register-name">{t("auth.full_name")}</Label>
                       <Input
                         id="register-name"
                         type="text"
@@ -139,7 +138,7 @@ export default function Auth() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="register-email">Email</Label>
+                      <Label htmlFor="register-email">{t("auth.email")}</Label>
                       <Input
                         id="register-email"
                         type="email"
@@ -151,7 +150,7 @@ export default function Auth() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="register-password">Password</Label>
+                      <Label htmlFor="register-password">{t("auth.password")}</Label>
                       <Input
                         id="register-password"
                         type="password"
@@ -162,7 +161,7 @@ export default function Auth() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="register-confirm">Confirm Password</Label>
+                      <Label htmlFor="register-confirm">{t("auth.confirm_password")}</Label>
                       <Input
                         id="register-confirm"
                         type="password"
@@ -173,7 +172,7 @@ export default function Auth() {
                     </div>
 
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Creating account..." : "Create Account"}
+                      {isLoading ? t("auth.creating_account") : t("auth.create_account")}
                     </Button>
                   </form>
                 </CardContent>
