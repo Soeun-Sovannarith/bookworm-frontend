@@ -8,8 +8,10 @@ import type { Book } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export default function BookDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -27,13 +29,15 @@ export default function BookDetail() {
   const loadBook = async (bookId: number) => {
     try {
       const data = await booksAPI.getById(bookId);
-      // Enrich with Open Library cover
       const enrichedBooks = await openLibraryAPI.enrichBooksWithCovers([data]);
       setBook(enrichedBooks[0]);
     } catch (error) {
       toast({
-        title: "Error loading book",
-        description: error instanceof Error ? error.message : "Could not fetch book details",
+        title: t("bookDetail.error_loading"),
+        description:
+          error instanceof Error
+            ? error.message
+            : t("bookDetail.fetch_error"),
         variant: "destructive",
       });
     } finally {
@@ -57,17 +61,19 @@ export default function BookDetail() {
         quantity: 1,
       });
 
-      // Increment cart count badge
       incrementCartCount();
 
       toast({
-        title: "Added to cart",
-        description: `${book.title} has been added to your cart`,
+        title: t("bookDetail.added_title"),
+        description: t("bookDetail.added_desc", { title: book.title }),
       });
     } catch (error) {
       toast({
-        title: "Error adding to cart",
-        description: error instanceof Error ? error.message : "Could not add item to cart",
+        title: t("bookDetail.error_add"),
+        description:
+          error instanceof Error
+            ? error.message
+            : t("bookDetail.add_error"),
         variant: "destructive",
       });
     } finally {
@@ -78,11 +84,9 @@ export default function BookDetail() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center">
-            <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading book details...</p>
-          </div>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">{t("bookDetail.loading")}</p>
         </div>
       </Layout>
     );
@@ -92,9 +96,9 @@ export default function BookDetail() {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
-          <p className="text-muted-foreground">Book not found</p>
+          <p className="text-muted-foreground">{t("bookDetail.not_found")}</p>
           <Button onClick={() => navigate("/books")} className="mt-4">
-            Back to Books
+            {t("bookDetail.back_to_books")}
           </Button>
         </div>
       </Layout>
@@ -106,54 +110,60 @@ export default function BookDetail() {
       <div className="container mx-auto px-4 py-8">
         <Button variant="ghost" onClick={() => navigate("/books")} className="mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Books
+          {t("bookDetail.back_to_books")}
         </Button>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Book Image */}
           <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden max-w-sm mx-auto md:mx-0">
-            <img
-              src={book.imageURL}
-              alt={book.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
-              }}
-            />
+            <img src={book.imageURL} alt={book.title} className="w-full h-full object-cover" />
           </div>
 
-          {/* Book Details */}
           <div>
             <h1 className="text-4xl font-bold mb-2">{book.title}</h1>
-            <p className="text-xl text-muted-foreground mb-4">by {book.author}</p>
+            <p className="text-xl text-muted-foreground mb-4">
+              {t("bookDetail.by_author", { author: book.author })}
+            </p>
 
             <div className="flex items-center gap-4 mb-6">
-              <span className="text-3xl font-bold text-primary">${book.price.toFixed(2)}</span>
-              <span className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm">
+              <span className="text-3xl font-bold text-primary">
+                ${book.price.toFixed(2)}
+              </span>
+              <span className="px-3 py-1 bg-secondary rounded-full text-sm">
                 {book.category}
               </span>
             </div>
 
             <div className="mb-6">
-              <p className="text-sm text-muted-foreground mb-1">Published: {book.published_date}</p>
+              <p className="text-sm text-muted-foreground mb-1">
+                {t("bookDetail.published")} {book.published_date}
+              </p>
               <p className="text-sm text-muted-foreground">
-                Availability: {book.stock > 0 ? `${book.stock} in stock` : "Out of stock"}
+                {t("bookDetail.availability")}{" "}
+                {book.stock > 0
+                  ? t("bookDetail.in_stock", { count: book.stock })
+                  : t("bookDetail.out_of_stock")}
               </p>
             </div>
 
             <div className="mb-8">
-              <h2 className="text-lg font-semibold mb-2">Description</h2>
-              <p className="text-muted-foreground leading-relaxed">{book.description}</p>
+              <h2 className="text-lg font-semibold mb-2">
+                {t("bookDetail.description")}
+              </h2>
+              <p className="text-muted-foreground">{book.description}</p>
             </div>
 
             <Button
               size="lg"
               onClick={handleAddToCart}
               disabled={book.stock === 0 || isAddingToCart}
-              className="w-full md:w-auto gap-2"
+              className="gap-2"
             >
               <ShoppingCart className="w-5 h-5" />
-              {isAddingToCart ? "Adding..." : book.stock === 0 ? "Out of Stock" : "Add to Cart"}
+              {isAddingToCart
+                ? t("bookDetail.adding")
+                : book.stock === 0
+                ? t("bookDetail.out_of_stock")
+                : t("bookDetail.add_to_cart")}
             </Button>
           </div>
         </div>

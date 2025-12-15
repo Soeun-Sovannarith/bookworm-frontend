@@ -5,6 +5,8 @@ import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, ShoppingCart, User, LogOut, LayoutDashboard } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,6 +16,7 @@ export function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     logout();
@@ -32,8 +35,10 @@ export function Layout({ children }: LayoutProps) {
 
             <nav className="flex items-center gap-4">
               <Link to="/books">
-                <Button variant="ghost">Browse Books</Button>
+                <Button variant="ghost">{t("nav.browse_books")}</Button>
               </Link>
+
+              <LanguageSwitcher />
 
               {user ? (
                 <>
@@ -52,14 +57,14 @@ export function Layout({ children }: LayoutProps) {
                   </Link>
 
                   <Link to="/orders">
-                    <Button variant="ghost">My Orders</Button>
+                    <Button variant="ghost">{t("nav.my_orders")}</Button>
                   </Link>
 
                   {user.role === "ADMIN" && (
                     <Link to="/admin">
                       <Button variant="outline">
                         <LayoutDashboard className="w-4 h-4 mr-2" />
-                        Admin
+                        {t("nav.admin")}
                       </Button>
                     </Link>
                   )}
@@ -77,7 +82,7 @@ export function Layout({ children }: LayoutProps) {
                 </>
               ) : (
                 <Link to="/auth">
-                  <Button>Sign In</Button>
+                  <Button>{t("nav.sign_in")}</Button>
                 </Link>
               )}
             </nav>
@@ -90,7 +95,7 @@ export function Layout({ children }: LayoutProps) {
       <footer className="border-t mt-20 bg-muted">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-muted-foreground">
-            <p>© 2025 BookHaven. Your trusted online bookstore.</p>
+            <p>{t("nav.copyright")}</p>
           </div>
         </div>
       </footer>

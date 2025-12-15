@@ -11,90 +11,56 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User as UserIcon, Mail, Calendar, Shield, Edit, Save, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return "N/A";
-  
   try {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "N/A";
-    
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch (error) {
-    console.error("Error parsing date:", error);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch {
     return "N/A";
   }
 };
 
 export default function Profile() {
+  const { t } = useTranslation();
   const { user: authUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    name: "",
-    email: "",
-  });
-
-//   // Debug: Log the authUser to see what data we have
-//   useEffect(() => {
-//     console.log("AuthUser data:", authUser);
-//   }, [authUser]);
+  const [editForm, setEditForm] = useState({ name: "", email: "" });
 
   useEffect(() => {
     if (authUser) {
-      setEditForm({
-        name: authUser.name,
-        email: authUser.email,
-      });
+      setEditForm({ name: authUser.name, email: authUser.email });
     }
   }, [authUser]);
 
   const handleEdit = () => {
     if (authUser) {
-      setEditForm({
-        name: authUser.name,
-        email: authUser.email,
-      });
+      setEditForm({ name: authUser.name, email: authUser.email });
       setIsEditing(true);
     }
   };
 
   const handleCancel = () => {
-    if (authUser) {
-      setEditForm({
-        name: authUser.name,
-        email: authUser.email,
-      });
-    }
+    if (authUser) setEditForm({ name: authUser.name, email: authUser.email });
     setIsEditing(false);
   };
 
   const handleSave = async () => {
     if (!authUser) return;
-
     try {
-      await usersAPI.update(authUser.id, {
-        name: editForm.name,
-        email: editForm.email,
-      });
-      
-      // Note: In a real app, you'd want to update the auth context here
-      // For now, the changes will persist in the database but won't reflect
-      // until the user logs out and back in
-      
+      await usersAPI.update(authUser.id, { name: editForm.name, email: editForm.email });
       setIsEditing(false);
-      
       toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully. Please log out and log back in to see the changes.",
+        title: t("profile.save"),
+        description: `${t("profile.save")} successfully. Please log out and log back in to see changes.`,
       });
     } catch (error) {
       toast({
-        title: "Error updating profile",
-        description: error instanceof Error ? error.message : "Could not update profile",
+        title: t("profile.save"),
+        description: error instanceof Error ? error.message : t("profile.save"),
         variant: "destructive",
       });
     }
@@ -104,7 +70,7 @@ export default function Profile() {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-16 text-center">
-          <p className="text-muted-foreground">Please log in to view your profile</p>
+          <p className="text-muted-foreground">{t("profile.login_prompt")}</p>
         </div>
       </Layout>
     );
@@ -114,26 +80,26 @@ export default function Profile() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl font-bold mb-8">My Profile</h1>
+          <h1 className="text-4xl font-bold mb-8">{t("profile.title")}</h1>
 
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Personal Information</CardTitle>
+                <CardTitle>{t("profile.personal_info")}</CardTitle>
                 {!isEditing ? (
                   <Button onClick={handleEdit} variant="outline">
                     <Edit className="w-4 h-4 mr-2" />
-                    Edit Profile
+                    {t("profile.edit_profile")}
                   </Button>
                 ) : (
                   <div className="flex gap-2">
                     <Button onClick={handleCancel} variant="outline" size="sm">
                       <X className="w-4 h-4 mr-2" />
-                      Cancel
+                      {t("profile.cancel")}
                     </Button>
                     <Button onClick={handleSave} size="sm">
                       <Save className="w-4 h-4 mr-2" />
-                      Save
+                      {t("profile.save")}
                     </Button>
                   </div>
                 )}
@@ -148,7 +114,7 @@ export default function Profile() {
                 <div>
                   <h2 className="text-2xl font-semibold">{authUser.name}</h2>
                   <Badge variant={authUser.role === "ADMIN" ? "default" : "secondary"}>
-                    {authUser.role}
+                    {authUser.role === "ADMIN" ? t("profile.administrator") : t("profile.standard_user")}
                   </Badge>
                 </div>
               </div>
@@ -157,29 +123,27 @@ export default function Profile() {
 
               {/* Profile Details */}
               <div className="space-y-4">
-                {/* Name Field */}
                 <div className="space-y-2">
                   <Label htmlFor="name" className="flex items-center gap-2">
                     <UserIcon className="w-4 h-4" />
-                    Name
+                    {t("profile.name")}
                   </Label>
                   {isEditing ? (
                     <Input
                       id="name"
                       value={editForm.name}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                      placeholder="Enter your name"
+                      placeholder={t("profile.name_placeholder")}
                     />
                   ) : (
                     <p className="text-lg">{authUser.name}</p>
                   )}
                 </div>
 
-                {/* Email Field */}
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    Email
+                    {t("profile.email")}
                   </Label>
                   {isEditing ? (
                     <Input
@@ -187,36 +151,31 @@ export default function Profile() {
                       type="email"
                       value={editForm.email}
                       onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                      placeholder="Enter your email"
+                      placeholder={t("profile.email_placeholder")}
                     />
                   ) : (
                     <p className="text-lg">{authUser.email}</p>
                   )}
                 </div>
 
-                {/* Role Field */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Shield className="w-4 h-4" />
-                    Role
+                    {t("profile.role")}
                   </Label>
                   <p className="text-lg">{authUser.role}</p>
                 </div>
 
-                {/* Member Since */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    Member Since
+                    {t("profile.member_since")}
                   </Label>
-                  <p className="text-lg">
-                    {formatDate(authUser.createdAt)}
-                  </p>
+                  <p className="text-lg">{formatDate(authUser.createdAt)}</p>
                 </div>
 
-                {/* User ID */}
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">User ID</Label>
+                  <Label className="text-muted-foreground">{t("profile.user_id")}</Label>
                   <p className="text-sm text-muted-foreground font-mono">{authUser.id}</p>
                 </div>
               </div>
@@ -227,13 +186,13 @@ export default function Profile() {
           <div className="grid md:grid-cols-2 gap-4 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Account Status</CardTitle>
+                <CardTitle className="text-lg">{t("profile.account_status")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Status</span>
+                  <span className="text-muted-foreground">{t("profile.status")}</span>
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    Active
+                    {t("profile.active")}
                   </Badge>
                 </div>
               </CardContent>
@@ -241,13 +200,13 @@ export default function Profile() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Account Type</CardTitle>
+                <CardTitle className="text-lg">{t("profile.account_type")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Type</span>
+                  <span className="text-muted-foreground">{t("profile.role")}</span>
                   <Badge variant={authUser.role === "ADMIN" ? "default" : "secondary"}>
-                    {authUser.role === "ADMIN" ? "Administrator" : "Standard User"}
+                    {authUser.role === "ADMIN" ? t("profile.administrator") : t("profile.standard_user")}
                   </Badge>
                 </div>
               </CardContent>

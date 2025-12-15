@@ -6,10 +6,13 @@ import type { Book } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export default function Books() {
+  const { t } = useTranslation();
+
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,14 +30,13 @@ export default function Books() {
   const loadBooks = async () => {
     try {
       const data = await booksAPI.getAll();
-      // Enrich books with Open Library covers
       const enrichedData = await openLibraryAPI.enrichBooksWithCovers(data);
       setBooks(enrichedData);
       setFilteredBooks(enrichedData);
     } catch (error) {
       toast({
-        title: "Error loading books",
-        description: error instanceof Error ? error.message : "Could not fetch books",
+        title: t("books.loading"),
+        description: error instanceof Error ? error.message : t("books.loading"),
         variant: "destructive",
       });
     } finally {
@@ -68,7 +70,7 @@ export default function Books() {
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
             <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading books...</p>
+            <p className="text-muted-foreground">{t("books.loading")}</p>
           </div>
         </div>
       </Layout>
@@ -79,14 +81,14 @@ export default function Books() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-6">Browse Our Collection</h1>
+          <h1 className="text-4xl font-bold mb-6">{t("books.title")}</h1>
 
           {/* Search and Filter */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input
-                placeholder="Search by title or author..."
+                placeholder={t("books.search_placeholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -101,14 +103,16 @@ export default function Books() {
                   onClick={() => setSelectedCategory(category)}
                   className="whitespace-nowrap"
                 >
-                  {category === "all" ? "All Books" : category}
+                  {category === "all" ? t("books.all_books") : category}
                 </Button>
               ))}
             </div>
           </div>
 
           <p className="text-muted-foreground">
-            Showing {filteredBooks.length} {filteredBooks.length === 1 ? "book" : "books"}
+            {t(
+              filteredBooks.length === 1 ? "books.book_singular" : "books.book_plural"
+            )}: {filteredBooks.length}
           </p>
         </div>
 
@@ -124,7 +128,8 @@ export default function Books() {
                       alt={book.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
+                        e.currentTarget.src =
+                          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='300' height='450' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Cover%3C/text%3E%3C/svg%3E";
                       }}
                     />
                   </div>
@@ -135,9 +140,13 @@ export default function Books() {
                   <p className="text-xs text-muted-foreground">{book.category}</p>
                 </CardContent>
                 <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                  <span className="text-lg font-bold text-primary">${book.price.toFixed(2)}</span>
+                  <span className="text-lg font-bold text-primary">
+                    ${book.price.toFixed(2)}
+                  </span>
                   <span className="text-sm text-muted-foreground">
-                    {book.stock > 0 ? `${book.stock} in stock` : "Out of stock"}
+                    {book.stock > 0
+                      ? t("books.in_stock", { count: book.stock })
+                      : t("books.out_of_stock")}
                   </span>
                 </CardFooter>
               </Card>
@@ -147,7 +156,7 @@ export default function Books() {
 
         {filteredBooks.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No books found matching your criteria</p>
+            <p className="text-muted-foreground">{t("books.no_books_found")}</p>
           </div>
         )}
       </div>

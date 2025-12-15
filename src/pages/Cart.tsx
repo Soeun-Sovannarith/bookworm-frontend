@@ -33,6 +33,7 @@ import { toast } from "@/hooks/use-toast";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { useTranslation } from "react-i18next";
 
 interface CartItemWithBook extends CartItem {
   book?: Book;
@@ -54,6 +55,7 @@ export default function Cart() {
   const [paymentMethod, setPaymentMethod] = useState<"BAKONG" | "STRIPE">("STRIPE");
   const [stripePromise, setStripePromise] = useState<any>(null);
   const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (user) {
@@ -363,7 +365,9 @@ export default function Cart() {
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
             <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading cart...</p>
+            <p className="text-muted-foreground">
+              {t("cart.loading")}
+            </p>
           </div>
         </div>
       </Layout>
@@ -374,14 +378,14 @@ export default function Cart() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Shopping Cart</h1>
+          <h1 className="text-4xl font-bold">{t("cart.title")}</h1>
           {cartItems.length > 0 && (
             <Button
               variant="outline"
               onClick={() => setShowClearCartDialog(true)}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Clear Cart
+              {t("cart.clear")}
             </Button>
           )}
         </div>
@@ -389,8 +393,8 @@ export default function Cart() {
         {cartItems.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-4">Your cart is empty</p>
-            <Button onClick={() => navigate("/books")}>Continue Shopping</Button>
+            <p className="text-muted-foreground mb-4">{t("cart.empty")}</p>
+            <Button onClick={() => navigate("/books")}>{t("cart.continue")}</Button>
           </div>
         ) : (
           <div className="grid lg:grid-cols-3 gap-8">
@@ -421,7 +425,7 @@ export default function Cart() {
                         </p>
                         {item.book && item.book.stock < 10 && (
                           <p className="text-xs text-orange-600">
-                            Only {item.book.stock} left in stock
+                            {t("cart.only_left", { count: item.book.stock })}
                           </p>
                         )}
                       </div>
@@ -465,32 +469,32 @@ export default function Cart() {
             <div>
               <Card>
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+                  <h2 className="text-xl font-semibold mb-4">{t("cart.summary")}</h2>
 
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Items ({cartItems.length})</span>
+                      <span className="text-muted-foreground">{t("cart.items", { count: cartItems.length })}</span>
                       <span>${calculateTotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Shipping</span>
-                      <span className="text-green-600">Free</span>
+                      <span className="text-muted-foreground">{t("cart.shipping")}</span>
+                      <span className="text-green-600">{t("cart.free")}</span>
                     </div>
                   </div>
 
                   <div className="border-t pt-4 mb-6">
                     <div className="flex justify-between text-lg font-bold">
-                      <span>Total</span>
+                      <span>{t("cart.total")}</span>
                       <span>${calculateTotal().toFixed(2)}</span>
                     </div>
                   </div>
 
                   <div className="space-y-4 mb-4">
                     <div>
-                      <Label htmlFor="shipping">Shipping Address</Label>
+                      <Label htmlFor="shipping">{t("cart.address")}</Label>
                       <Input
                         id="shipping"
-                        placeholder="Enter your address"
+                        placeholder={t("cart.address_placeholder")}
                         value={shippingAddress}
                         onChange={(e) => setShippingAddress(e.target.value)}
                         className="mt-1"
@@ -504,7 +508,7 @@ export default function Cart() {
                     onClick={handleCheckout}
                     disabled={!shippingAddress.trim()}
                   >
-                    Proceed to Checkout
+                    {t("cart.checkout")}
                   </Button>
                 </CardContent>
               </Card>
@@ -517,42 +521,44 @@ export default function Cart() {
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Choose Payment Method</DialogTitle>
+            <DialogTitle>{t("cart.choose_payment")}</DialogTitle>
             <DialogDescription>
-              Select how you'd like to pay for your order
+              {t("cart.choose_payment_desc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="border rounded-lg p-4 bg-muted">
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Total Amount:</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("cart.total")}
+                </span>
                 <span className="text-lg font-bold">${calculateTotal().toFixed(2)}</span>
               </div>
               <div className="text-sm text-muted-foreground">
-                Shipping to: {shippingAddress}
+                {t("cart.shipping_to")}: {shippingAddress}
               </div>
               {currentOrderId && (
                 <div className="text-sm text-muted-foreground mt-1">
-                  Order ID: #{currentOrderId}
+                  {t("cart.order_id")}: #{currentOrderId}
                 </div>
               )}
             </div>
 
             {!currentOrderId && (
               <div>
-                <Label className="mb-3 block">Payment Method</Label>
+                <Label className="mb-3 block">{t("cart.payment_method")}</Label>
                 <RadioGroup value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
                   <div className="flex items-center space-x-2 border rounded-lg p-3">
                     <RadioGroupItem value="STRIPE" id="stripe" />
                     <Label htmlFor="stripe" className="flex-1 cursor-pointer">
-                      Credit/Debit Card (Stripe)
+                      {t("cart.card")}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 border rounded-lg p-3">
                     <RadioGroupItem value="BAKONG" id="bakong" />
                     <Label htmlFor="bakong" className="flex-1 cursor-pointer">
-                      Bakong QR Payment
+                      {t("cart.bakong")}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -562,7 +568,7 @@ export default function Cart() {
             {isGeneratingQR && (
               <div className="text-center py-8">
                 <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-                <p className="text-muted-foreground">Generating QR code...</p>
+                <p className="text-muted-foreground">{t("cart.generating_qr")}</p>
               </div>
             )}
 
@@ -580,13 +586,13 @@ export default function Cart() {
 
                 {/* Payment Instructions */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-                  <h4 className="font-semibold text-blue-900 text-sm">Payment Instructions:</h4>
+                  <h4 className="font-semibold text-blue-900 text-sm">{t("cart.bakong_instructions")}</h4>
                   <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                    <li>Open your Bakong app</li>
-                    <li>Tap "Scan QR" or "Pay"</li>
-                    <li>Scan this QR code</li>
-                    <li>Confirm the amount: ${bakongQR.amount.toFixed(2)}</li>
-                    <li>Complete the payment</li>
+                    <li>{t("cart.bakong_step1")}</li>
+                    <li>{t("cart.bakong_step2")}</li>
+                    <li>{t("cart.bakong_step3")}</li>
+                    <li>{t("cart.bakong_step4", { amount: bakongQR.amount.toFixed(2) })}</li>
+                    <li>{t("cart.bakong_step5")}</li>
                   </ol>
                 </div>
 
@@ -624,7 +630,7 @@ export default function Cart() {
                   onClick={handlePaymentMethodSubmit}
                   disabled={isProcessing}
                 >
-                  {isProcessing ? "Creating Order..." : "Continue to Payment"}
+                  {isProcessing ? t("common.processing") : t("cart.checkout")}
                 </Button>
                 <Button
                   variant="outline"
@@ -632,7 +638,7 @@ export default function Cart() {
                   onClick={() => setShowPaymentModal(false)}
                   disabled={isProcessing}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </>
             ) : paymentMethod === "BAKONG" && bakongQR ? (
@@ -642,7 +648,7 @@ export default function Cart() {
                   onClick={processCheckout}
                   disabled={isProcessing || isGeneratingQR}
                 >
-                  {isProcessing ? "Confirming..." : "I've Completed Payment"}
+                  {isProcessing ? t("common.confirming") : t("cart.complete_payment")}
                 </Button>
                 <Button
                   variant="outline"
@@ -654,7 +660,7 @@ export default function Cart() {
                   }}
                   disabled={isProcessing}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </>
             ) : null}
@@ -666,15 +672,15 @@ export default function Cart() {
       <AlertDialog open={showClearCartDialog} onOpenChange={setShowClearCartDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear Cart?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cart.confirm_clear")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove all items from your cart? This action cannot be undone.
+              {t("cart.confirm_clear_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={clearCart} disabled={isProcessing}>
-              {isProcessing ? "Clearing..." : "Clear Cart"}
+              {isProcessing ? t("common.processing") : t("cart.clear")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -694,6 +700,7 @@ function StripePaymentForm({ clientSecret, orderId, onSuccess, onCancel }: {
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -744,7 +751,7 @@ function StripePaymentForm({ clientSecret, orderId, onSuccess, onCancel }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="border rounded-lg p-4 bg-white">
-        <Label className="mb-2 block">Card Details</Label>
+        <Label className="mb-2 block">{t("cart.card_details")}</Label>
         <CardElement
           options={{
             style: {
@@ -775,7 +782,7 @@ function StripePaymentForm({ clientSecret, orderId, onSuccess, onCancel }: {
           className="w-full"
           disabled={!stripe || isProcessing}
         >
-          {isProcessing ? "Processing..." : "Pay Now"}
+          {isProcessing ? t("common.processing") : t("cart.pay_now")}
         </Button>
         <Button
           type="button"
@@ -784,7 +791,7 @@ function StripePaymentForm({ clientSecret, orderId, onSuccess, onCancel }: {
           onClick={onCancel}
           disabled={isProcessing}
         >
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </form>
