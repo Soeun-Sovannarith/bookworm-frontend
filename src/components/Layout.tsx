@@ -14,6 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { ModeSwitcher } from "./ui/mode-switcher";
+import { Chatbot } from "./Chatbot";
 
 interface LayoutProps {
   children: ReactNode;
@@ -121,11 +122,17 @@ export function Layout({ children }: LayoutProps) {
 
       <footer className="border-t mt-auto bg-muted/50">
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-base text-muted-foreground space-y-2">
             <p>{t("nav.copyright")}</p>
+            <p className="text-sm">
+              Developed by <span className="font-medium">Soeun Sovannarith</span> & <span className="font-medium">Serey Sunteang</span>
+            </p>
           </div>
         </div>
       </footer>
+
+      {/* AI Chatbot */}
+      <Chatbot />
     </div>
   );
 }
