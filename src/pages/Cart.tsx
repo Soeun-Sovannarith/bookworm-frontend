@@ -55,6 +55,8 @@ export default function Cart() {
   const [paymentMethod, setPaymentMethod] = useState<"BAKONG" | "STRIPE">("STRIPE");
   const [stripePromise, setStripePromise] = useState<any>(null);
   const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+  const [isPollingPayment, setIsPollingPayment] = useState(false);
+  const [paymentStatusMessage, setPaymentStatusMessage] = useState("");
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -76,6 +78,112 @@ export default function Cart() {
     };
     initStripe();
   }, []);
+
+  // Poll payment status for Bakong payments
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout;
+    
+    if (currentOrderId && paymentMethod === "BAKONG" && bakongQR) {
+      console.log("Starting payment polling for order:", currentOrderId);
+      setIsPollingPayment(true);
+      setPaymentStatusMessage("Waiting for payment...");
+      
+      let attempts = 0;
+      const maxAttempts = 60; // 3 minutes (60 * 3 seconds)
+      
+      const checkPaymentStatus = async () => {
+        attempts++;
+        
+        try {
+          console.log(`Polling payment status for order: ${currentOrderId} (attempt ${attempts}/${maxAttempts})`);
+          
+          const response = await fetch(
+            `http://localhost:8080/api/payments/bakong/verify-payment?orderId=${currentOrderId}&md5=${bakongQR.md5}`,
+            {
+              method: 'POST',
+            }
+          );
+          
+          if (!response.ok) {
+            console.error("Failed to verify payment:", response.status);
+            return;
+          }
+          
+          const status = await response.json();
+          console.log("Order status received:", status);
+          
+          // Check if payment is completed according to the API spec
+          if (status.paymentStatus === 'COMPLETED' && status.orderStatus === 'PAID') {
+            console.log("Payment confirmed! Clearing interval.");
+            clearInterval(pollInterval);
+            setIsPollingPayment(false);
+            setPaymentStatusMessage("Payment confirmed!");
+            
+            toast({
+              title: "Payment Successful!",
+              description: `Order #${currentOrderId} payment confirmed.`,
+            });
+            
+            // Process checkout (clear cart and redirect)
+            setTimeout(() => {
+              processCheckout();
+            }, 1500);
+          } else if (status.paymentStatus === 'FAILED') {
+            console.log("Payment failed!");
+            clearInterval(pollInterval);
+            setIsPollingPayment(false);
+            setPaymentStatusMessage("Payment failed. Please try again.");
+            
+            toast({
+              title: "Payment Failed",
+              description: status.message || "Your payment could not be processed.",
+              variant: "destructive",
+            });
+          } else if (attempts >= maxAttempts) {
+            console.log("Payment verification timeout");
+            clearInterval(pollInterval);
+            setIsPollingPayment(false);
+            setPaymentStatusMessage("Timeout. Please check your order status.");
+            
+            toast({
+              title: "Verification Timeout",
+              description: "Payment verification timeout. Please check your order status.",
+              variant: "destructive",
+            });
+          } else {
+            console.log("Payment still pending, will check again in 3 seconds...");
+            setPaymentStatusMessage(`Waiting for payment... (${attempts}/${maxAttempts})`);
+          }
+        } catch (error) {
+          console.error("Error polling payment status:", error);
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            setIsPollingPayment(false);
+            setPaymentStatusMessage("Unable to verify payment.");
+            
+            toast({
+              title: "Verification Error",
+              description: "Unable to verify payment. Please contact support.",
+              variant: "destructive",
+            });
+          }
+        }
+      };
+      
+      // Check immediately once
+      checkPaymentStatus();
+      
+      // Then poll every 3 seconds
+      pollInterval = setInterval(checkPaymentStatus, 3000);
+    }
+    
+    return () => {
+      if (pollInterval) {
+        console.log("Cleaning up payment polling interval");
+        clearInterval(pollInterval);
+      }
+    };
+  }, [currentOrderId, paymentMethod, bakongQR]);
 
   const loadCart = async () => {
     if (!user) return;
@@ -328,6 +436,8 @@ export default function Cart() {
       setBakongQR(null);
       setCurrentOrderId(null);
       setShippingAddress("");
+      setIsPollingPayment(false);
+      setPaymentStatusMessage("");
 
       // Clear cart count badge
       clearCartCount();
@@ -574,6 +684,17 @@ export default function Cart() {
 
             {bakongQR && !isGeneratingQR && (
               <div className="space-y-4">
+                {/* Payment Status */}
+                {isPollingPayment && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <div className="animate-spin w-5 h-5 border-3 border-primary border-t-transparent rounded-full" />
+                      <span className="font-medium text-blue-900">{paymentStatusMessage}</span>
+                    </div>
+                    <p className="text-xs text-blue-700">⏳ Checking payment status every 3 seconds...</p>
+                  </div>
+                )}
+
                 {/* QR Code Display */}
                 <div className="flex justify-center bg-white p-4 rounded-lg">
                   <QRCodeSVG
@@ -600,6 +721,54 @@ export default function Cart() {
                 <div className="text-xs text-muted-foreground space-y-1">
                   <div>Bill Number: {bakongQR.billNumber}</div>
                   <div>Currency: {bakongQR.currency}</div>
+                  <div className="text-green-600 font-medium">Payment will be auto-detected when completed</div>
+                </div>
+
+                {/* Manual Payment Completion Button (for testing) */}
+                <div className="pt-2">
+                  <Button
+                    onClick={async () => {
+                      if (!currentOrderId) return;
+                      try {
+                        console.log("Manually completing payment for order:", currentOrderId);
+                        const response = await fetch(`http://localhost:8080/api/payments/bakong/complete-payment`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({ orderId: currentOrderId }),
+                        });
+                        
+                        const result = await response.json();
+                        console.log("Complete payment response:", result);
+                        
+                        if (response.ok) {
+                          toast({
+                            title: "Payment Completed",
+                            description: "Payment marked as complete. Waiting for status update...",
+                          });
+                        } else {
+                          toast({
+                            title: "Error",
+                            description: result.message || "Failed to complete payment",
+                            variant: "destructive",
+                          });
+                        }
+                      } catch (error) {
+                        console.error("Error completing payment:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to complete payment",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    Test: Mark Payment as Complete
+                  </Button>
                 </div>
               </div>
             )}
