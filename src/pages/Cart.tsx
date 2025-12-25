@@ -84,7 +84,7 @@ export default function Cart() {
     let pollInterval: NodeJS.Timeout;
     
     if (currentOrderId && paymentMethod === "BAKONG" && bakongQR) {
-      console.log("Starting payment polling for order:", currentOrderId);
+      // console.log("Starting payment polling for order:", currentOrderId);
       setIsPollingPayment(true);
       setPaymentStatusMessage("Waiting for payment...");
       
@@ -95,7 +95,7 @@ export default function Cart() {
         attempts++;
         
         try {
-          console.log(`Polling payment status for order: ${currentOrderId} (attempt ${attempts}/${maxAttempts})`);
+          // console.log(`Polling payment status for order: ${currentOrderId} (attempt ${attempts}/${maxAttempts})`);
           
           const response = await fetch(
             `http://localhost:8080/api/payments/bakong/verify-payment?orderId=${currentOrderId}&md5=${bakongQR.md5}`,
@@ -110,11 +110,11 @@ export default function Cart() {
           }
           
           const status = await response.json();
-          console.log("Order status received:", status);
+          // console.log("Order status received:", status);
           
           // Check if payment is completed according to the API spec
           if (status.paymentStatus === 'COMPLETED' && status.orderStatus === 'PAID') {
-            console.log("Payment confirmed! Clearing interval.");
+            // console.log("Payment confirmed! Clearing interval.");
             clearInterval(pollInterval);
             setIsPollingPayment(false);
             setPaymentStatusMessage("Payment confirmed!");
@@ -129,7 +129,7 @@ export default function Cart() {
               processCheckout();
             }, 1500);
           } else if (status.paymentStatus === 'FAILED') {
-            console.log("Payment failed!");
+            // console.log("Payment failed!");
             clearInterval(pollInterval);
             setIsPollingPayment(false);
             setPaymentStatusMessage("Payment failed. Please try again.");
@@ -140,7 +140,7 @@ export default function Cart() {
               variant: "destructive",
             });
           } else if (attempts >= maxAttempts) {
-            console.log("Payment verification timeout");
+            // console.log("Payment verification timeout");
             clearInterval(pollInterval);
             setIsPollingPayment(false);
             setPaymentStatusMessage("Timeout. Please check your order status.");
@@ -151,7 +151,7 @@ export default function Cart() {
               variant: "destructive",
             });
           } else {
-            console.log("Payment still pending, will check again in 3 seconds...");
+            // console.log("Payment still pending, will check again in 3 seconds...");
             setPaymentStatusMessage(`Waiting for payment... (${attempts}/${maxAttempts})`);
           }
         } catch (error) {
@@ -179,7 +179,7 @@ export default function Cart() {
     
     return () => {
       if (pollInterval) {
-        console.log("Cleaning up payment polling interval");
+        // console.log("Cleaning up payment polling interval");
         clearInterval(pollInterval);
       }
     };
@@ -247,13 +247,13 @@ export default function Cart() {
     }
 
     try {
-      console.log("Updating cart item:", {
-        itemId,
-        newQuantity,
-        userId: user.id,
-        bookId: item.bookId,
-        token: localStorage.getItem("token") ? "exists" : "missing",
-      });
+      // console.log("Updating cart item:", {
+      //   itemId,
+      //   newQuantity,
+      //   userId: user.id,
+      //   bookId: item.bookId,
+      //   token: localStorage.getItem("token") ? "exists" : "missing",
+      // });
 
       await cartAPI.update(itemId, {
         userId: user.id,
@@ -730,7 +730,7 @@ export default function Cart() {
                     onClick={async () => {
                       if (!currentOrderId) return;
                       try {
-                        console.log("Manually completing payment for order:", currentOrderId);
+                        // console.log("Manually completing payment for order:", currentOrderId);
                         const response = await fetch(`http://localhost:8080/api/payments/bakong/complete-payment`, {
                           method: "POST",
                           headers: {
@@ -740,7 +740,7 @@ export default function Cart() {
                         });
                         
                         const result = await response.json();
-                        console.log("Complete payment response:", result);
+                        // console.log("Complete payment response:", result);
                         
                         if (response.ok) {
                           toast({
@@ -767,7 +767,7 @@ export default function Cart() {
                     size="sm"
                     className="w-full"
                   >
-                    Test: Mark Payment as Complete
+                    Mark Payment as Complete
                   </Button>
                 </div>
               </div>

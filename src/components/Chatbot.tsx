@@ -80,7 +80,7 @@ export function Chatbot() {
           : undefined,
       };
 
-      console.log("Sending request to Athena:", requestBody);
+      // console.log("Sending request to Athena:", requestBody);
 
       // Call the backend API
       const response = await fetch("http://localhost:8080/api/athena/chat", {
@@ -98,7 +98,7 @@ export function Chatbot() {
       }
 
       const data = await response.json();
-      console.log("API Response:", data);
+      // console.log("API Response:", data);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),

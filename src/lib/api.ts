@@ -170,49 +170,49 @@ export const openLibraryAPI = {
       
       for (const [index, searchQuery] of searchStrategies.entries()) {
         const searchUrl = `https://openlibrary.org/search.json?${searchQuery}&limit=5`;
-        console.log(`🔍 Search Strategy ${index + 1} for: "${cleanTitle}" - ${searchUrl}`);
+        // console.log(`🔍 Search Strategy ${index + 1} for: "${cleanTitle}" - ${searchUrl}`);
         
         const searchResponse = await fetch(searchUrl);
         
         if (!searchResponse.ok) {
-          console.warn(`⚠️ Open Library API returned status: ${searchResponse.status}`);
+          // console.warn(`⚠️ Open Library API returned status: ${searchResponse.status}`);
           continue;
         }
         
         const searchData = await searchResponse.json();
-        console.log(`📚 Found ${searchData.numFound || 0} results for "${cleanTitle}"`);
+        // console.log(`📚 Found ${searchData.numFound || 0} results for "${cleanTitle}"`);
 
         if (searchData.docs && searchData.docs.length > 0) {
           // Try to find the best match
           for (const book of searchData.docs) {
-            console.log(`  📖 Checking: "${book.title}" by ${book.author_name?.join(', ') || 'unknown'}`);
+            // console.log(`  📖 Checking: "${book.title}" by ${book.author_name?.join(', ') || 'unknown'}`);
             
             // Priority 1: Use ISBN (most reliable)
             if (book.isbn && book.isbn.length > 0) {
               const isbn = book.isbn[0];
               const coverUrl = openLibraryAPI.getCoverByISBN(isbn, 'L');
-              console.log(`✅ Found cover via ISBN: ${coverUrl}`);
+              // console.log(`✅ Found cover via ISBN: ${coverUrl}`);
               return coverUrl;
             }
             
             // Priority 2: Use OLID (Open Library ID)
             if (book.cover_edition_key) {
               const coverUrl = openLibraryAPI.getCoverByOLID(book.cover_edition_key, 'L');
-              console.log(`✅ Found cover via OLID: ${coverUrl}`);
+              // console.log(`✅ Found cover via OLID: ${coverUrl}`);
               return coverUrl;
             }
             
             // Priority 3: Use Cover ID (internal ID)
             if (book.cover_i) {
               const coverUrl = `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`;
-              console.log(`✅ Found cover via Cover ID: ${coverUrl}`);
+              // console.log(`✅ Found cover via Cover ID: ${coverUrl}`);
               return coverUrl;
             }
           }
         }
       }
       
-      console.warn(`⚠️ No cover found for "${cleanTitle}" after trying all strategies`);
+      // console.warn(`⚠️ No cover found for "${cleanTitle}" after trying all strategies`);
       return null;
     } catch (error) {
       console.error(`❌ Error searching cover for "${title}":`, error);
