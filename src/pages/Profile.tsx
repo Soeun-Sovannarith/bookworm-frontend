@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { User as UserIcon, Mail, Calendar, Shield, Edit, Save, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { SEO, pageSEO } from "@/components/SEO";
 
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return "N/A";
@@ -78,6 +79,7 @@ export default function Profile() {
 
   return (
     <Layout>
+      <SEO {...pageSEO.profile} />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold mb-8">{t("profile.title")}</h1>

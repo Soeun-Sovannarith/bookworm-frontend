@@ -7,6 +7,7 @@ import { cartAPI, booksAPI, ordersAPI, openLibraryAPI, bakongAPI, stripeAPI } fr
 import type { CartItem, Book, BakongPaymentResponse, StripePaymentResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SEO, pageSEO } from "@/components/SEO";
 import {
   Dialog,
   DialogContent,
@@ -550,6 +551,7 @@ export default function Cart() {
 
   return (
     <Layout>
+      <SEO {...pageSEO.cart} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">{t("cart.title")}</h1>

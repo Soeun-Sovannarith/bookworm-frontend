@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { SEO, pageSEO } from "@/components/SEO";
 
 export default function BookDetail() {
   const { t } = useTranslation();
@@ -84,6 +85,7 @@ export default function BookDetail() {
   if (isLoading) {
     return (
       <Layout>
+        <SEO />
         <div className="container mx-auto px-4 py-16 text-center">
           <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-muted-foreground">{t("bookDetail.loading")}</p>
@@ -95,6 +97,7 @@ export default function BookDetail() {
   if (!book) {
     return (
       <Layout>
+        <SEO />
         <div className="container mx-auto px-4 py-16 text-center">
           <p className="text-muted-foreground">{t("bookDetail.not_found")}</p>
           <Button onClick={() => navigate("/books")} className="mt-4">
@@ -106,8 +109,7 @@ export default function BookDetail() {
   }
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8">
+    <Layout>      <SEO {...pageSEO.bookDetail(book.title)} />      <div className="container mx-auto px-4 py-8">
         <Button variant="ghost" onClick={() => navigate("/books")} className="mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
           {t("bookDetail.back_to_books")}

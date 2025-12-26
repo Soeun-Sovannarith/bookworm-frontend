@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { SEO, pageSEO } from "@/components/SEO";
 
 interface CartItemWithBook extends CartItem {
   book?: Book;
@@ -120,6 +121,7 @@ export default function Checkout() {
 
   return (
     <Layout>
+      <SEO {...pageSEO.checkout} />
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8">{t("checkout.title")}</h1>
         <form onSubmit={handleCheckout}>

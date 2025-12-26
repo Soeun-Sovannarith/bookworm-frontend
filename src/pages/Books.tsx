@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Search } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { SEO, pageSEO } from "@/components/SEO";
 
 export default function Books() {
   const { t } = useTranslation();
@@ -67,6 +68,7 @@ export default function Books() {
   if (isLoading) {
     return (
       <Layout>
+        <SEO {...pageSEO.books} />
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
             <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
@@ -78,8 +80,7 @@ export default function Books() {
   }
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8">
+    <Layout>      <SEO {...pageSEO.books} />      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-6">{t("books.title")}</h1>
 

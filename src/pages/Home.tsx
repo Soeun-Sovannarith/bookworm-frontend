@@ -3,12 +3,14 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Search, ShoppingBag, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SEO, pageSEO } from "@/components/SEO";
 
 export default function Home() {
   const { t } = useTranslation();
 
   return (
     <Layout>
+      <SEO {...pageSEO.home} />
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-primary/10 via-background to-accent/10 py-12 sm:py-16 md:py-20">
         <div className="container mx-auto px-4">

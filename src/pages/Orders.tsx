@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { SEO, pageSEO } from "@/components/SEO";
 
 export default function Orders() {
   const { t } = useTranslation();
@@ -81,6 +82,7 @@ export default function Orders() {
 
   return (
     <Layout>
+      <SEO {...pageSEO.orders} />
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8">{t("orders.title")}</h1>
 
