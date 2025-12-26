@@ -231,7 +231,24 @@ export function Layout({ children }: LayoutProps) {
           <div className="text-center text-sm sm:text-base text-muted-foreground space-y-2">
             <p>{t("nav.copyright")}</p>
             <p className="text-xs sm:text-sm">
-              Developed by <span className="font-medium">Soeun Sovannarith</span> & <span className="font-medium">Serey Sunteang</span>
+              Developed by{" "}
+              <a 
+                href="https://portfolio.rith.codes" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-medium hover:text-primary transition-colors underline-offset-4 hover:underline"
+              >
+                Soeun Sovannarith
+              </a>
+              {" "}&{" "}
+              <a 
+                href="https://serey-sunteang.vercel.app/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-medium hover:text-primary transition-colors underline-offset-4 hover:underline"
+              >
+                Serey Sunteang
+              </a>
             </p>
           </div>
         </div>
