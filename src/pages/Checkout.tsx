@@ -12,10 +12,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { SEO, pageSEO } from "@/components/SEO";
+import emailjs from '@emailjs/browser';
 
 interface CartItemWithBook extends CartItem {
   book?: Book;
 }
+
+// EmailJS Configuration from environment variables
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID_ADMIN = import.meta.env.VITE_EMAILJS_ADMIN_TEMPLATE_ID;
+const EMAILJS_TEMPLATE_ID_CUSTOMER = import.meta.env.VITE_EMAILJS_CUSTOMER_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 export default function Checkout() {
   const { t } = useTranslation();
@@ -25,6 +33,7 @@ export default function Checkout() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD" | "DEBIT_CARD" | "PAYPAL" | "BANK_TRANSFER">("CREDIT_CARD");
 
   useEffect(() => {
@@ -60,9 +69,77 @@ export default function Checkout() {
   const calculateTotal = () =>
     cartItems.reduce((total, item) => total + (item.book?.price || 0) * item.quantity, 0);
 
+  const sendEmails = async (orderId: number, totalAmount: number) => {
+    try {
+      // Initialize EmailJS with public key
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+
+      // Prepare order items for email
+      const orderItems = cartItems.map(item => 
+        `${item.book?.title || 'Unknown'} x${item.quantity} - $${((item.book?.price || 0) * item.quantity).toFixed(2)}`
+      ).join('\n');
+
+      // Email to Admin
+      const adminEmailParams = {
+        to_email: ADMIN_EMAIL,
+        customer_name: user?.username || 'Customer',
+        customer_email: customerEmail,
+        order_id: orderId,
+        order_items: orderItems,
+        total_amount: totalAmount.toFixed(2),
+        shipping_address: shippingAddress,
+        payment_method: paymentMethod,
+        order_date: new Date().toLocaleString(),
+      };
+
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID_ADMIN,
+        adminEmailParams
+      );
+
+      // Thank You Email to Customer
+      const customerEmailParams = {
+        to_email: customerEmail,
+        customer_name: user?.username || 'Customer',
+        order_id: orderId,
+        order_items: orderItems,
+        total_amount: totalAmount.toFixed(2),
+        shipping_address: shippingAddress,
+        order_date: new Date().toLocaleString(),
+      };
+
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID_CUSTOMER,
+        customerEmailParams
+      );
+
+      console.log('Emails sent successfully');
+    } catch (error) {
+      console.error('Error sending emails:', error);
+      // Don't throw error - we don't want to fail the order if email fails
+      toast({
+        title: "Email Notification",
+        description: "Order placed successfully, but email notification failed.",
+        variant: "default",
+      });
+    }
+  };
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || cartItems.length === 0) return;
+    
+    if (!customerEmail) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const totalAmount = calculateTotal();
@@ -80,10 +157,14 @@ export default function Checkout() {
         paymentMethod,
         paymentStatus: "COMPLETED",
       });
+
+      // Send emails
+      await sendEmails(order.id, totalAmount);
+
       await Promise.all(cartItems.map((item) => cartAPI.delete(item.id)));
       toast({
         title: t("checkout.place_order"),
-        description: `Order #${order.id} ${t("checkout.place_order")}`,
+        description: `Order #${order.id} ${t("checkout.place_order")}. Confirmation email sent to ${customerEmail}`,
       });
       navigate("/orders");
     } catch (error) {
@@ -143,6 +224,20 @@ export default function Checkout() {
                         onChange={(e) => setShippingAddress(e.target.value)}
                         required
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email Address *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="your.email@example.com"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        required
+                      />
+                      <p className="text-sm text-muted-foreground mt-1">
+                        We'll send order confirmation and updates to this email
+                      </p>
                     </div>
                   </div>
                 </CardContent>
