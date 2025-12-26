@@ -14,8 +14,16 @@ import type {
   StripeConfig
 } from "@/types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://159.89.146.37:8080";
-const API_KEY = import.meta.env.VITE_API_KEY || "Jct6ISFPFCPTVN5Owb3zsf9j6CMWR3qADNrp9r18icxwkibA";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+if (!API_BASE_URL) {
+  throw new Error("VITE_API_BASE_URL environment variable is not set");
+}
+
+if (!API_KEY) {
+  throw new Error("VITE_API_KEY environment variable is not set");
+}
 
 // Helper to get auth header
 const getAuthHeader = () => {
@@ -45,12 +53,10 @@ async function fetchAPI<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    console.error(`API Error [${endpoint}]:`, {
-      status: response.status,
-      statusText: response.statusText,
-      error,
-      headers,
-    });
+    // Log only in development mode
+    if (import.meta.env.DEV) {
+      console.error(`API Error:`, response.status, response.statusText);
+    }
     throw new Error(error.error || error.message || `Request failed: ${response.status}`);
   }
 
@@ -215,7 +221,7 @@ export const openLibraryAPI = {
       // console.warn(`⚠️ No cover found for "${cleanTitle}" after trying all strategies`);
       return null;
     } catch (error) {
-      console.error(`❌ Error searching cover for "${title}":`, error);
+      // Silently fail for cover images
       return null;
     }
   },
