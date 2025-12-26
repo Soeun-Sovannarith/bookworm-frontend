@@ -136,27 +136,27 @@ export function Chatbot() {
     <>
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-4 w-96 h-[500px] shadow-2xl z-50 flex flex-col animate-in slide-in-from-bottom-5">
-          <CardHeader className="border-b bg-primary text-primary-foreground p-4">
+        <Card className="fixed bottom-20 sm:bottom-24 right-2 sm:right-4 w-[calc(100vw-1rem)] sm:w-96 h-[calc(100vh-6rem)] sm:h-[500px] max-w-[450px] shadow-2xl z-50 flex flex-col animate-in slide-in-from-bottom-5">
+          <CardHeader className="border-b bg-primary text-primary-foreground p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Bot className="w-6 h-6" />
-                <CardTitle className="text-lg">Athena - AI Assistant</CardTitle>
+                <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
+                <CardTitle className="text-base sm:text-lg">Athena - AI Assistant</CardTitle>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsOpen(false)}
-                className="h-8 w-8 hover:bg-primary-foreground/20"
+                className="h-7 w-7 sm:h-8 sm:w-8 hover:bg-primary-foreground/20"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </div>
           </CardHeader>
 
           <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 p-3 sm:p-4">
+              <div className="space-y-3 sm:space-y-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -165,18 +165,18 @@ export function Chatbot() {
                     }`}
                   >
                     {message.sender === "bot" && (
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                        <Bot className="w-5 h-5 text-primary-foreground" />
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                        <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
                       </div>
                     )}
                     <div
-                      className={`max-w-[75%] rounded-lg p-3 ${
+                      className={`max-w-[80%] sm:max-w-[75%] rounded-lg p-2.5 sm:p-3 ${
                         message.sender === "user"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-foreground"
                       }`}
                     >
-                      <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
+                      <div className="text-xs sm:text-sm prose prose-sm max-w-none dark:prose-invert">
                         {message.sender === "bot" ? (
                           <ReactMarkdown
                             components={{
@@ -195,7 +195,7 @@ export function Chatbot() {
                           <p>{message.text}</p>
                         )}
                       </div>
-                      <span className="text-xs opacity-70 mt-1 block">
+                      <span className="text-[10px] sm:text-xs opacity-70 mt-1 block">
                         {message.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -203,18 +203,18 @@ export function Chatbot() {
                       </span>
                     </div>
                     {message.sender === "user" && (
-                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                        <User className="w-5 h-5 text-secondary-foreground" />
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-secondary-foreground" />
                       </div>
                     )}
                   </div>
                 ))}
                 {isTyping && (
                   <div className="flex gap-2 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-5 h-5 text-primary-foreground" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
                     </div>
-                    <div className="bg-muted rounded-lg p-3">
+                    <div className="bg-muted rounded-lg p-2.5 sm:p-3">
                       <div className="flex gap-1">
                         <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" />
                         <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce delay-100" />
@@ -227,19 +227,20 @@ export function Chatbot() {
               </div>
             </ScrollArea>
 
-            <div className="border-t p-4">
+            <div className="border-t p-3 sm:p-4">
               <div className="flex gap-2">
                 <Input
                   placeholder="Type your message..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="flex-1"
+                  className="flex-1 text-sm"
                 />
                 <Button
                   size="icon"
                   onClick={handleSendMessage}
                   disabled={!inputMessage.trim() || isTyping}
+                  className="h-9 w-9 sm:h-10 sm:w-10"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -253,12 +254,12 @@ export function Chatbot() {
       <Button
         size="icon"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
+        className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-2xl z-50 hover:scale-110 transition-transform"
       >
         {isOpen ? (
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
         ) : (
-          <MessageCircle className="w-6 h-6" />
+          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
         )}
       </Button>
     </>
