@@ -84,6 +84,9 @@
   "cart.order_id": "Order ID",
 
   "cart.generating_qr": "Generating QR code...",
+  "cart.download_qr": "Download QR Code",
+  "cart.qr_downloaded": "QR Code Downloaded",
+  "cart.qr_downloaded_desc": "QR code saved successfully. You can scan it anytime to complete payment.",
   "cart.complete_payment": "I've Completed Payment",
 
   "cart.confirm_clear": "Clear Cart?",
@@ -206,6 +209,8 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "view": "View",
-    "edit": "Edit"
+    "edit": "Edit",
+    "confirm_delete": "Are you sure you want to delete this book?",
+    "confirm_delete_description": "This action cannot be undone. The book will be permanently removed from the database."
   }
 }

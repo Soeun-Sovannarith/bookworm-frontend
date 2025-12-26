@@ -28,7 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js";
@@ -97,8 +97,9 @@ export default function Cart() {
         try {
           // console.log(`Polling payment status for order: ${currentOrderId} (attempt ${attempts}/${maxAttempts})`);
           
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://159.89.146.37:8080";
           const response = await fetch(
-            `http://localhost:8080/api/payments/bakong/verify-payment?orderId=${currentOrderId}&md5=${bakongQR.md5}`,
+            `${API_BASE_URL}/api/payments/bakong/verify-payment?orderId=${currentOrderId}&md5=${bakongQR.md5}`,
             {
               method: 'POST',
             }
@@ -469,6 +470,69 @@ export default function Cart() {
     }, 0);
   };
 
+  const downloadQRCode = () => {
+    if (!bakongQR) return;
+
+    // Get the SVG element
+    const svg = document.querySelector('#bakong-qr-code');
+    if (!svg) return;
+
+    // Create a canvas element
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    const svgSize = 220;
+    const padding = 40;
+    canvas.width = svgSize + padding * 2;
+    canvas.height = svgSize + padding * 2 + 60; // Extra space for text
+
+    // Fill white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Convert SVG to image
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      // Draw QR code
+      ctx.drawImage(img, padding, padding, svgSize, svgSize);
+
+      // Add text information
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Bakong Payment', canvas.width / 2, svgSize + padding + 20);
+      
+      ctx.font = '12px Arial';
+      ctx.fillText(`Amount: $${bakongQR.amount.toFixed(2)}`, canvas.width / 2, svgSize + padding + 40);
+      ctx.fillText(`Bill: ${bakongQR.billNumber}`, canvas.width / 2, svgSize + padding + 56);
+
+      // Convert canvas to blob and download
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `bakong-qr-${bakongQR.billNumber}.png`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: t("cart.qr_downloaded"),
+          description: t("cart.qr_downloaded_desc"),
+        });
+      });
+
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -698,11 +762,24 @@ export default function Cart() {
                 {/* QR Code Display */}
                 <div className="flex justify-center bg-white p-4 rounded-lg">
                   <QRCodeSVG
+                    id="bakong-qr-code"
                     value={bakongQR.qrCode}
                     size={220}
                     level="H"
                     includeMargin={true}
                   />
+                </div>
+
+                {/* Download QR Button */}
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={downloadQRCode}
+                    className="w-full"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {t("cart.download_qr")}
+                  </Button>
                 </div>
 
                 {/* Payment Instructions */}
@@ -731,7 +808,8 @@ export default function Cart() {
                       if (!currentOrderId) return;
                       try {
                         // console.log("Manually completing payment for order:", currentOrderId);
-                        const response = await fetch(`http://localhost:8080/api/payments/bakong/complete-payment`, {
+                        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://159.89.146.37:8080";
+                        const response = await fetch(`${API_BASE_URL}/api/payments/bakong/complete-payment`, {
                           method: "POST",
                           headers: {
                             "Content-Type": "application/json",

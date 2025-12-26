@@ -419,6 +419,75 @@ export default function Admin() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Delete Book Confirmation Dialog */}
+        <AlertDialog open={deleteBookId !== null} onOpenChange={(open) => !open && setDeleteBookId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("admin.confirm_delete")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("admin.confirm_delete_description")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeleteBookId(null)}>
+                {t("admin.cancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteBookId && handleDeleteBook(deleteBookId)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {t("admin.delete")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* View Book Dialog */}
+        <Dialog open={viewBook !== null} onOpenChange={(open) => !open && setViewBook(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{viewBook?.title}</DialogTitle>
+            </DialogHeader>
+            {viewBook && (
+              <div className="space-y-4">
+                {viewBook.imageURL && (
+                  <img
+                    src={viewBook.imageURL}
+                    alt={viewBook.title}
+                    className="w-full h-64 object-cover rounded-lg"
+                  />
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">{t("admin.author")}</Label>
+                    <p>{viewBook.author}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">{t("admin.category")}</Label>
+                    <p>{viewBook.category}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">{t("admin.published_date")}</Label>
+                    <p>{viewBook.published_date}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">{t("admin.price")}</Label>
+                    <p>${viewBook.price.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">{t("admin.stock")}</Label>
+                    <p>{viewBook.stock}</p>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">{t("admin.description")}</Label>
+                  <p className="mt-2 text-sm">{viewBook.description}</p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

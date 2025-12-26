@@ -83,7 +83,8 @@ export function Chatbot() {
       // console.log("Sending request to Athena:", requestBody);
 
       // Call the backend API
-      const response = await fetch("http://localhost:8080/api/athena/chat", {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://159.89.146.37:8080";
+      const response = await fetch(`${API_BASE_URL}/api/athena/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -14,8 +14,8 @@ import type {
   StripeConfig
 } from "@/types";
 
-const API_BASE_URL = "http://localhost:8080";
-const API_KEY = "Jct6ISFPFCPTVN5Owb3zsf9j6CMWR3qADNrp9r18icxwkibA";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://159.89.146.37:8080";
+const API_KEY = import.meta.env.VITE_API_KEY || "Jct6ISFPFCPTVN5Owb3zsf9j6CMWR3qADNrp9r18icxwkibA";
 
 // Helper to get auth header
 const getAuthHeader = () => {
